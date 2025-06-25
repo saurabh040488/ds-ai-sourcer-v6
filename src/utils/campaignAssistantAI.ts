@@ -369,37 +369,78 @@ export async function generateCampaignFromDraft(
     };
   });
 
-  const systemPrompt = `You are an expert email campaign generator. Create a professional email sequence based on the provided campaign draft and matching example guideline.
+  const systemPrompt = `You are an expert email campaign generator specializing in healthcare recruitment. Create professional, engaging HTML-formatted email sequences that incorporate proper markup and styling.
+
+CRITICAL HTML EMAIL REQUIREMENTS:
+1. Generate content in HTML format with proper email-safe markup
+2. Use inline CSS styling for maximum email client compatibility
+3. Include proper text formatting (bold, italic, underline) where appropriate
+4. Create organized bullet points or numbered lists using HTML lists
+5. Generate clickable hyperlinks with proper HTML anchor tags
+6. Maintain clear heading hierarchy (h2, h3 - avoid h1 in emails)
+7. Use proper paragraph spacing and formatting
+8. Ensure mobile-responsive design with table-based layouts
+9. Include accessibility features (alt text, proper contrast)
+10. Follow email design best practices for deliverability
+
+HTML STRUCTURE GUIDELINES:
+- Use tables for layout structure (email client compatibility)
+- Inline CSS for all styling (avoid external stylesheets)
+- Use web-safe fonts (Arial, Helvetica, Georgia, Times New Roman)
+- Maintain 600px max width for desktop compatibility
+- Use proper color contrast ratios (minimum 4.5:1)
+- Include alt text for any images
+- Use semantic HTML elements where appropriate
 
 CAMPAIGN EXAMPLE GUIDELINE:
 ${JSON.stringify(matchingExample, null, 2)}
 
 EMAIL LENGTH REQUIREMENTS:
 - Target length: ${lengthSpec.range} (${lengthSpec.description})
-- Tone: ${draft.tone || 'professional'}
-- CRITICAL: Each email must be approximately ${lengthSpec.range}. This is a strict requirement.
+- Tone: ${draft.tone || 'professional'} (apply the following guidelines based on tone):
+  - **Professional**: Use formal language, structured layout, neutral colors
+  - **Friendly**: Use warm colors, conversational tone, approachable design
+  - **Casual**: Use relaxed formatting, informal language, vibrant colors
+  - **Formal**: Use conservative design, precise language, traditional layout
 
 COMPANY KNOWLEDGE BASE (COLLATERAL):
 ${relevantCompanyCollateral.length > 0 ? JSON.stringify(formattedCollateral, null, 2) : 'No company collateral available.'}
 
 COLLATERAL USAGE INSTRUCTIONS:
-- Integrate the company collateral naturally into the email content
-- For 'who_we_are', 'mission_statements', 'benefits', 'dei_statements', and 'newsletters': Use the content directly in the email body
-- For 'talent_community_link', 'career_site_link', and 'company_logo': Use as links in calls to action
+- Integrate the company collateral naturally into the email content with proper HTML formatting
+- For 'who_we_are', 'mission_statements', 'benefits', 'dei_statements', and 'newsletters': Use the content directly in the email body with proper HTML formatting
+- For 'talent_community_link', 'career_site_link', and 'company_logo': Use as properly formatted HTML links and images
 - Prioritize relevant collateral for each email step based on the email's purpose
 - Maintain the specified tone and length while incorporating collateral
 - Use collateral to enhance personalization and authenticity
-- For links, create appropriate call-to-action text (e.g., "Join our talent community" for talent_community_link)
 
 IMPORTANT: The campaign example structure above is a GUIDELINE and HINT for sequencing your campaign, not a strict template. Use it to understand the flow and approach, but create content that matches the specific draft requirements.
-
-Generate emails that follow the example structure but are personalized for the specific draft requirements.
 
 ADDITIONAL CONTEXT USAGE:
 - The additionalContext field contains verbatim content that MUST be incorporated directly into the campaign
 - Use this content exactly as provided without modification, summarization, or interpretation
 - This content should inform and shape the email sequence while maintaining consistency with the source material's tone, style, and messaging
 - Integrate this content naturally into the emails while preserving its original details and nuances
+
+CRITICAL HTML EMAIL TEMPLATE STRUCTURE:
+Each email content should follow this structure:
+\`\`\`html
+<table width="100%" cellpadding="0" cellspacing="0" style="max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif; line-height: 1.6;">
+  <tr>
+    <td style="padding: 20px;">
+      <h2 style="color: #333; font-size: 20px; margin: 0 0 15px 0;">Greeting</h2>
+      <p style="color: #555; font-size: 16px; margin: 0 0 15px 0;">Email content with proper formatting...</p>
+      <ul style="color: #555; font-size: 16px; margin: 15px 0; padding-left: 20px;">
+        <li style="margin-bottom: 8px;">Bullet point item</li>
+      </ul>
+      <p style="color: #555; font-size: 16px; margin: 15px 0;">
+        <a href="{{link}}" style="color: #0066cc; text-decoration: none; font-weight: bold;">Call to Action</a>
+      </p>
+      <p style="color: #555; font-size: 16px; margin: 15px 0 0 0;">Best regards,<br>{{Recruiter Name}}</p>
+    </td>
+  </tr>
+</table>
+\`\`\`
 
 RESPONSE FORMAT:
 Return a JSON object with:
@@ -420,7 +461,7 @@ Return a JSON object with:
     {
       "type": "email",
       "subject": "Email subject with {{First Name}} personalization",
-      "content": "Email content with {{First Name}}, {{Company Name}}, {{Current Company}} tokens",
+      "content": "HTML-formatted email content with proper markup, styling, and {{First Name}}, {{Company Name}}, {{Current Company}} tokens",
       "delay": 0,
       "delayUnit": "immediately"
     }
@@ -438,15 +479,18 @@ IMPORTANT:
 - Incorporate the specified tone and target audience
 - Use the guideline structure but adapt content to the specific draft
 - Incorporate the additionalContext content verbatim where appropriate
-- CRITICALLY IMPORTANT: Integrate company collateral naturally into the emails`;
+- CRITICALLY IMPORTANT: Each email must have a clear call to action (CTA) formatted as an HTML link.
+- CRITICALLY IMPORTANT: Structure content for readability using proper HTML formatting with headings, paragraphs, and lists.
+- CRITICALLY IMPORTANT: Ensure the specified tone: ${draft.tone || 'professional'} influences both language and HTML styling.`;
 
   const userPrompt = `Campaign Draft:
 ${JSON.stringify(draft, null, 2)}
 
-Generate the complete campaign with email sequence using the guideline structure.
+Generate the complete campaign with HTML-formatted email sequence using the guideline structure.
 CRITICAL: Each email must be ${lengthSpec.range} in length with a ${draft.tone || 'professional'} tone.
 CRITICAL: Use the additionalContext content exactly as provided without any modifications.
-CRITICAL: Integrate the company collateral naturally into the emails where appropriate.`;
+CRITICAL: Integrate the company collateral naturally into the emails where appropriate.
+CRITICAL: Format all emails with proper HTML markup, inline CSS, and responsive design.`;
 
   try {
     console.log('📤 Sending campaign generation request...');
@@ -662,74 +706,74 @@ function createFallbackCampaign(
     }
   }
 
-  // Create email content based on length preference and incorporate company collateral
+  // Create HTML email template for each step
   const createEmailContent = (index: number, title: string): string => {
-    // Base content with company information if available
-    let companyContent = '';
-    let callToAction = '';
-    
-    // Add company information based on email index
-    if (index === 0 && companyInfo) {
-      companyContent = `\n\n${companyInfo}`;
-    } else if (index === 1 && companyMission) {
-      companyContent = `\n\n${companyMission}`;
-    } else if (index === 2 && companyBenefits) {
-      companyContent = `\n\nOur benefits include: ${companyBenefits}`;
-    }
-    
-    // Add call to action with links if available
-    if (talentCommunityLink && index === example.sequenceAndExamples.steps - 1) {
-      callToAction = `\n\nJoin our talent community to stay updated on future opportunities: ${talentCommunityLink}`;
-    } else if (careerSiteLink) {
-      callToAction = `\n\nLearn more about opportunities at ${draft.companyName}: ${careerSiteLink}`;
-    }
-    
-    // Trim content based on email length
-    const baseContent = `Hi {{First Name}},
-
-I hope this message finds you well. ${title} at {{Company Name}}.
-
-${draft.additionalContext || 'We have exciting opportunities that align with your background and career goals.'}${companyContent}${callToAction}
-
-Best regards,
-${draft.recruiterName}`;
-
-    // Adjust content length based on preference
-    if (draft.emailLength === 'short') {
-      return `Hi {{First Name}},
-
-${title} at {{Company Name}}. ${draft.additionalContext ? draft.additionalContext.split('.')[0] + '.' : 'We have exciting opportunities for you.'}${callToAction ? '\n\n' + callToAction.split('.')[0] + '.' : ''}
-
-Best regards,
-${draft.recruiterName}`;
-    } else if (draft.emailLength === 'medium') {
-      return `Hi {{First Name}},
-
-I hope this message finds you well. ${title} at {{Company Name}}.
-
-${draft.additionalContext || 'We have exciting opportunities that align with your background and career goals.'} I believe your experience at {{Current Company}} makes you an excellent fit for our team.${companyContent.substring(0, 200)}${callToAction}
-
-I'd love to discuss how your skills and expertise could contribute to our organization. Would you be available for a brief conversation this week?
-
-Best regards,
-${draft.recruiterName}`;
-    } else if (draft.emailLength === 'long') {
-      return `Hi {{First Name}},
-
-I hope this message finds you well. ${title} at {{Company Name}}.
-
-${draft.additionalContext || 'We have exciting opportunities that align with your background and career goals.'} I've been particularly impressed by your experience at {{Current Company}} and believe you would be a valuable addition to our team.${companyContent}
-
-Our organization offers competitive compensation, comprehensive benefits, and a supportive work environment focused on professional growth and development. We're currently expanding our team and looking for talented professionals like yourself.${callToAction}
-
-I'd love to schedule a time to discuss these opportunities in more detail and answer any questions you might have. Would you be available for a brief conversation this week?
-
-Best regards,
-${draft.recruiterName}`;
-    } else {
-      // Default to concise (60-80 words)
-      return baseContent;
-    }
+    // Base HTML template with responsive design
+    return `<table width="100%" cellpadding="0" cellspacing="0" style="max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif; line-height: 1.6;">
+  <tr>
+    <td style="padding: 20px;">
+      <h2 style="color: #333; font-size: 20px; margin: 0 0 15px 0;">Hi {{First Name}},</h2>
+      
+      <p style="color: #555; font-size: 16px; margin: 0 0 15px 0;">
+        ${title} at <strong style="color: #333;">{{Company Name}}</strong>.
+      </p>
+      
+      <p style="color: #555; font-size: 16px; margin: 0 0 15px 0;">
+        ${draft.additionalContext || 'We have exciting opportunities that align with your background and career goals.'}
+      </p>
+      
+      ${index === 0 && companyInfo ? `
+      <p style="color: #555; font-size: 16px; margin: 0 0 15px 0;">
+        ${companyInfo}
+      </p>
+      ` : ''}
+      
+      ${index === 1 && companyMission ? `
+      <p style="color: #555; font-size: 16px; margin: 0 0 15px 0;">
+        ${companyMission}
+      </p>
+      ` : ''}
+      
+      ${index === 2 && companyBenefits ? `
+      <div style="margin: 15px 0;">
+        <p style="color: #555; font-size: 16px; margin: 0 0 10px 0;"><strong style="color: #333;">Our benefits include:</strong></p>
+        <ul style="color: #555; font-size: 16px; margin: 0; padding-left: 20px;">
+          <li style="margin-bottom: 8px;">${companyBenefits}</li>
+        </ul>
+      </div>
+      ` : ''}
+      
+      ${index === 0 ? `
+      <p style="color: #555; font-size: 16px; margin: 15px 0;">
+        Would you be interested in exploring opportunities with us?
+      </p>
+      ` : index === 1 ? `
+      <p style="color: #555; font-size: 16px; margin: 15px 0;">
+        I'd love to discuss how your experience at <strong style="color: #333;">{{Current Company}}</strong> could be valuable to our team.
+      </p>
+      ` : `
+      <p style="color: #555; font-size: 16px; margin: 15px 0;">
+        Would you be available for a brief conversation this week?
+      </p>
+      `}
+      
+      ${(talentCommunityLink && index === 2) ? `
+      <div style="margin: 20px 0;">
+        <a href="${talentCommunityLink}" style="display: inline-block; padding: 10px 20px; background-color: #0066cc; color: white; text-decoration: none; border-radius: 4px; font-weight: bold;">Join Our Talent Community</a>
+      </div>
+      ` : (careerSiteLink ? `
+      <p style="color: #555; font-size: 16px; margin: 15px 0;">
+        Learn more about opportunities at ${draft.companyName}: <a href="${careerSiteLink}" style="color: #0066cc; text-decoration: none; font-weight: bold;">View Career Site</a>
+      </p>
+      ` : '')}
+      
+      <p style="color: #555; font-size: 16px; margin: 15px 0 0 0;">
+        Best regards,<br>
+        <strong style="color: #333;">{{Your Name}}</strong>
+      </p>
+    </td>
+  </tr>
+</table>`;
   };
 
   const emailSteps: EmailStep[] = example.sequenceAndExamples.examples.map((exampleTitle, index) => ({

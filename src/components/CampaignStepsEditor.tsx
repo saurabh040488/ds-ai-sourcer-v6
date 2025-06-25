@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ArrowLeft, Mail, Send, Eye, Plus, Trash2, Clock, User, Loader2, Save, Edit3, Copy, Play, EyeOff, X } from 'lucide-react';
+import { ArrowLeft, Mail, Send, Eye, Plus, Trash2, Clock, User, Loader2, Save, Edit3, Copy, Play, EyeOff, X, Code, Type } from 'lucide-react';
 import { type EmailStep } from '../utils/openai';
 import { AuthContext } from './AuthWrapper';
 import { Project, createCampaign, updateCampaign, Campaign } from '../lib/supabase';
@@ -30,6 +30,7 @@ const CampaignStepsEditor: React.FC<CampaignStepsEditorProps> = ({
   const [testEmail, setTestEmail] = useState('');
   const [showPreview, setShowPreview] = useState(false);
   const [selectedTestCandidate, setSelectedTestCandidate] = useState('John Smith');
+  const [viewMode, setViewMode] = useState<'html' | 'preview'>('html');
 
   const testCandidates = [
     { name: 'John Smith', company: 'Memorial Healthcare' },
@@ -49,16 +50,37 @@ const CampaignStepsEditor: React.FC<CampaignStepsEditorProps> = ({
       id: `step-${emailSteps.length + 1}`,
       type: 'email',
       subject: 'Following up on our conversation',
-      content: `Hi {{First Name}},
-
-I wanted to follow up on our previous conversation about opportunities at {{Company Name}}.
-
-We have some exciting new positions that might be a perfect fit for your background and career goals.
-
-Would you be available for a brief call this week to discuss?
-
-Best regards,
-{{Your Name}}`,
+      content: `<table width="100%" cellpadding="0" cellspacing="0" style="max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif; line-height: 1.6;">
+  <tr>
+    <td style="padding: 20px;">
+      <h2 style="color: #333; font-size: 20px; margin: 0 0 15px 0;">Hi {{First Name}},</h2>
+      
+      <p style="color: #555; font-size: 16px; margin: 0 0 15px 0;">
+        I wanted to follow up on our previous conversation about opportunities at <strong style="color: #333;">{{Company Name}}</strong>.
+      </p>
+      
+      <p style="color: #555; font-size: 16px; margin: 0 0 15px 0;">
+        We have some exciting new positions that might be a perfect fit for your background and career goals:
+      </p>
+      
+      <ul style="color: #555; font-size: 16px; margin: 15px 0; padding-left: 20px;">
+        <li style="margin-bottom: 8px;">Competitive compensation packages</li>
+        <li style="margin-bottom: 8px;">Comprehensive benefits</li>
+        <li style="margin-bottom: 8px;">Professional development opportunities</li>
+      </ul>
+      
+      <p style="color: #555; font-size: 16px; margin: 15px 0;">
+        Would you be available for a brief call this week to discuss? 
+        <a href="#" style="color: #0066cc; text-decoration: none; font-weight: bold;">Schedule a conversation</a>
+      </p>
+      
+      <p style="color: #555; font-size: 16px; margin: 15px 0 0 0;">
+        Best regards,<br>
+        <strong style="color: #333;">{{Your Name}}</strong>
+      </p>
+    </td>
+  </tr>
+</table>`,
       delay: emailSteps.length === 0 ? 0 : 3,
       delayUnit: emailSteps.length === 0 ? 'immediately' : 'business days'
     };
@@ -238,15 +260,70 @@ Best regards,
     if (activeStep) {
       const currentContent = activeStep.content;
       const insertion = `{{${token}}}`;
+      
+      // For HTML content, try to insert at cursor position or at the end of content
       updateEmailStep(activeStep.id, 'content', currentContent + insertion);
     }
+  };
+
+  const insertHTMLTemplate = (templateType: string) => {
+    if (!activeStep) return;
+    
+    let template = '';
+    
+    switch (templateType) {
+      case 'button':
+        template = `<div style="margin: 20px 0;">
+  <a href="#" style="display: inline-block; padding: 10px 20px; background-color: #0066cc; color: white; text-decoration: none; border-radius: 4px; font-weight: bold;">Click Here</a>
+</div>`;
+        break;
+      case 'list':
+        template = `<ul style="color: #555; font-size: 16px; margin: 15px 0; padding-left: 20px;">
+  <li style="margin-bottom: 8px;">First item</li>
+  <li style="margin-bottom: 8px;">Second item</li>
+  <li style="margin-bottom: 8px;">Third item</li>
+</ul>`;
+        break;
+      case 'section':
+        template = `<div style="margin: 20px 0; padding: 15px; background-color: #f5f5f5; border-left: 4px solid #0066cc; border-radius: 4px;">
+  <h3 style="color: #333; font-size: 18px; margin: 0 0 10px 0;">Section Heading</h3>
+  <p style="color: #555; font-size: 16px; margin: 0;">Important information goes here.</p>
+</div>`;
+        break;
+      case 'quote':
+        template = `<blockquote style="margin: 20px 0; padding: 10px 20px; border-left: 4px solid #ccc; font-style: italic; color: #666;">
+  "This is a testimonial or quote that adds credibility to your message."
+</blockquote>`;
+        break;
+      case 'image':
+        template = `<div style="margin: 20px 0; text-align: center;">
+  <img src="https://example.com/image.jpg" alt="Description of image" style="max-width: 100%; height: auto; border-radius: 4px;" />
+  <p style="color: #777; font-size: 14px; margin-top: 5px;">Caption text</p>
+</div>`;
+        break;
+      default:
+        return;
+    }
+    
+    updateEmailStep(activeStep.id, 'content', activeStep.content + template);
   };
 
   const activeStep = emailSteps.find(step => step.id === activeStepId);
   const selectedCandidate = testCandidates.find(c => c.name === selectedTestCandidate) || testCandidates[0];
 
   const renderPreviewContent = (content: string) => {
-    return content
+    // Replace personalization tokens with actual values
+    let processedContent = content
+      .replace(/\{\{First Name\}\}/g, selectedCandidate.name.split(' ')[0])
+      .replace(/\{\{Current Company\}\}/g, selectedCandidate.company)
+      .replace(/\{\{Company Name\}\}/g, campaignData.companyName)
+      .replace(/\{\{Your Name\}\}/g, campaignData.recruiterName);
+
+    return processedContent;
+  };
+
+  const renderPreviewSubject = (subject: string) => {
+    return subject
       .replace(/\{\{First Name\}\}/g, selectedCandidate.name.split(' ')[0])
       .replace(/\{\{Current Company\}\}/g, selectedCandidate.company)
       .replace(/\{\{Company Name\}\}/g, campaignData.companyName)
@@ -466,8 +543,16 @@ Best regards,
                       {/* Email Body */}
                       <div>
                         <div className="flex items-center justify-between mb-2">
-                          <label className="block text-sm font-medium text-gray-700">Email Body</label>
+                          <label className="block text-sm font-medium text-gray-700">Email Body (HTML)</label>
                           <div className="flex items-center gap-2">
+                            <button 
+                              onClick={() => setViewMode(viewMode === 'html' ? 'preview' : 'html')}
+                              className="px-2 py-1 text-xs bg-gray-100 text-gray-700 hover:bg-gray-200 rounded flex items-center gap-1"
+                              title={viewMode === 'html' ? "Show HTML Preview" : "Edit HTML"}
+                            >
+                              {viewMode === 'html' ? <Eye className="w-3 h-3" /> : <Code className="w-3 h-3" />}
+                              {viewMode === 'html' ? "Preview" : "HTML"}
+                            </button>
                             <button 
                               onClick={() => insertPersonalizationToken('First Name')}
                               className="px-2 py-1 text-xs text-purple-600 hover:bg-purple-50 rounded"
@@ -486,15 +571,65 @@ Best regards,
                             >
                               + Current Company
                             </button>
+                            <button 
+                              onClick={() => insertPersonalizationToken('Your Name')}
+                              className="px-2 py-1 text-xs text-purple-600 hover:bg-purple-50 rounded"
+                            >
+                              + Your Name
+                            </button>
                           </div>
                         </div>
-                        <textarea
-                          value={activeStep.content}
-                          onChange={(e) => updateEmailStep(activeStep.id, 'content', e.target.value)}
-                          rows={16}
-                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none font-mono text-sm leading-relaxed"
-                          placeholder="Enter email content..."
-                        />
+                        
+                        {viewMode === 'html' ? (
+                          <textarea
+                            value={activeStep.content}
+                            onChange={(e) => updateEmailStep(activeStep.id, 'content', e.target.value)}
+                            rows={16}
+                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none font-mono text-sm leading-relaxed"
+                            placeholder="Enter HTML email content..."
+                          />
+                        ) : (
+                          <div className="border border-gray-300 rounded-lg p-4 h-96 overflow-auto bg-white">
+                            <div dangerouslySetInnerHTML={{ __html: renderPreviewContent(activeStep.content) }} />
+                          </div>
+                        )}
+                        
+                        {/* HTML Templates */}
+                        <div className="mt-3">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-xs text-gray-500">Insert HTML Template:</span>
+                            <button 
+                              onClick={() => insertHTMLTemplate('button')}
+                              className="px-2 py-1 text-xs bg-blue-100 text-blue-700 hover:bg-blue-200 rounded"
+                            >
+                              Button
+                            </button>
+                            <button 
+                              onClick={() => insertHTMLTemplate('list')}
+                              className="px-2 py-1 text-xs bg-blue-100 text-blue-700 hover:bg-blue-200 rounded"
+                            >
+                              List
+                            </button>
+                            <button 
+                              onClick={() => insertHTMLTemplate('section')}
+                              className="px-2 py-1 text-xs bg-blue-100 text-blue-700 hover:bg-blue-200 rounded"
+                            >
+                              Section
+                            </button>
+                            <button 
+                              onClick={() => insertHTMLTemplate('quote')}
+                              className="px-2 py-1 text-xs bg-blue-100 text-blue-700 hover:bg-blue-200 rounded"
+                            >
+                              Quote
+                            </button>
+                            <button 
+                              onClick={() => insertHTMLTemplate('image')}
+                              className="px-2 py-1 text-xs bg-blue-100 text-blue-700 hover:bg-blue-200 rounded"
+                            >
+                              Image
+                            </button>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -570,12 +705,12 @@ Best regards,
                   <div className="mb-4 pb-4 border-b border-gray-200">
                     <div className="text-sm font-medium text-gray-700 mb-1">Subject:</div>
                     <div className="text-lg font-medium text-gray-900">
-                      {renderPreviewContent(activeStep.subject)}
+                      {renderPreviewSubject(activeStep.subject)}
                     </div>
                   </div>
                   
-                  <div className="text-gray-900 whitespace-pre-wrap leading-relaxed">
-                    {renderPreviewContent(activeStep.content)}
+                  <div className="text-gray-900">
+                    <div dangerouslySetInnerHTML={{ __html: renderPreviewContent(activeStep.content) }} />
                   </div>
                 </div>
               </div>

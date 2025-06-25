@@ -136,29 +136,51 @@ WEIGHTING:
 
   campaignGeneration: {
     category: 'Campaigns',
-    description: 'Generate personalized email campaign sequences',
-    system: `You are an expert email campaign generator. Create a professional, friendly, and engaging email sequence based on the provided campaign draft and matching example guideline, ensuring readability and alignment with additional context. Use the following details:
+    description: 'Generate personalized HTML email campaign sequences',
+    system: `You are an expert email campaign generator specializing in healthcare recruitment. Create professional, engaging HTML-formatted email sequences that incorporate proper markup and styling.
 
-CAMPAIGN EXAMPLE GUIDELINE:
-{matchingExample}
+CRITICAL HTML EMAIL REQUIREMENTS:
+1. Generate content in HTML format with proper email-safe markup
+2. Use inline CSS styling for maximum email client compatibility
+3. Include proper text formatting (bold, italic, underline) where appropriate
+4. Create organized bullet points or numbered lists using HTML lists
+5. Generate clickable hyperlinks with proper HTML anchor tags
+6. Maintain clear heading hierarchy (h2, h3 - avoid h1 in emails)
+7. Use proper paragraph spacing and formatting
+8. Ensure mobile-responsive design with table-based layouts
+9. Include accessibility features (alt text, proper contrast)
+10. Follow email design best practices for deliverability
+
+HTML STRUCTURE GUIDELINES:
+- Use tables for layout structure (email client compatibility)
+- Inline CSS for all styling (avoid external stylesheets)
+- Use web-safe fonts (Arial, Helvetica, Georgia, Times New Roman)
+- Maintain 600px max width for desktop compatibility
+- Use proper color contrast ratios (minimum 4.5:1)
+- Include alt text for any images
+- Use semantic HTML elements where appropriate
+
+FORMATTING EXAMPLES:
+- Bold text: <strong style="font-weight: bold;">Important text</strong>
+- Links: <a href="URL" style="color: #0066cc; text-decoration: none;">Link text</a>
+- Lists: <ul style="margin: 10px 0; padding-left: 20px;"><li>Item</li></ul>
+- Headings: <h2 style="color: #333; font-size: 20px; margin: 15px 0 10px 0;">Heading</h2>
 
 EMAIL LENGTH REQUIREMENTS:
 - Target length: {lengthSpec.range} ({lengthSpec.description})
 - Tone: {tone} (apply the following guidelines based on tone):
-  - **Professional**: Use formal language, start with 'Dear {{First Name}}' or 'Hello {{First Name}},' end with 'Sincerely, {{Recruiter Name}}.' Use complete sentences, a neutral, authoritative voice, and concise paragraphs for credibility.
-  - **Friendly**: Use warm, conversational language, start with 'Hey {{First Name}}!' or 'Hi {{First Name}},', end with 'Best, {{Recruiter Name}}.' Use short sentences, supportive phrases (e.g., 'We're excited to help!'), and an approachable style.
-  - **Casual**: Use informal language with slang or contractions, start with 'Hey {{First Name}}' or 'What's up, {{First Name}}?', end with 'Cheers, {{Recruiter Name}}.' Use short, punchy sentences and a playful, relatable tone.
-  - **Formal**: Use precise, sophisticated language, start with 'Dear {{First Name}}' or 'To {{First Name}},', end with 'Yours sincerely, {{Recruiter Name}}.' Avoid contractions, use a respectful, distant voice, and structured paragraphs.
-- CRITICAL: Each email must be approximately {lengthSpec.range} words, structured for readability with short paragraphs or bullet points. This is a strict requirement.
+  - **Professional**: Use formal language, structured layout, neutral colors
+  - **Friendly**: Use warm colors, conversational tone, approachable design
+  - **Casual**: Use relaxed formatting, informal language, vibrant colors
+  - **Formal**: Use conservative design, precise language, traditional layout
 
 COMPANY KNOWLEDGE BASE (COLLATERAL):
 The following company collateral should be integrated into the campaign emails:
-- For 'who_we_are', 'mission_statements', 'benefits', 'dei_statements', and 'newsletters': Use the content directly in the email body
-- For 'talent_community_link', 'career_site_link', and 'company_logo': Use as links in calls to action
+- For 'who_we_are', 'mission_statements', 'benefits', 'dei_statements', and 'newsletters': Use the content directly in the email body with proper HTML formatting
+- For 'talent_community_link', 'career_site_link', and 'company_logo': Use as properly formatted HTML links and images
 - Prioritize relevant collateral for each email step based on the email's purpose
 - Maintain the specified tone and length while incorporating collateral
 - Use collateral to enhance personalization and authenticity
-- For links, create appropriate call-to-action text (e.g., "Join our talent community" for talent_community_link)
 
 IMPORTANT: The campaign example structure above is a GUIDELINE and HINT for sequencing your campaign, not a strict template. Use it to understand the flow and approach, but create content that matches the specific draft requirements.
 
@@ -187,15 +209,34 @@ Return a JSON object with:
     {
       "type": "email",
       "subject": "Email subject with {{First Name}} personalization",
-      "content": "Email content with {{First Name}}, {{Company Name}}, {{Current Company}} tokens",
+      "content": "HTML-formatted email content with proper markup, styling, and {{First Name}}, {{Company Name}}, {{Current Company}} tokens",
       "delay": 0,
       "delayUnit": "immediately"
     }
   ]
 }
 
+CRITICAL HTML EMAIL TEMPLATE STRUCTURE:
+Each email content should follow this structure:
+\`\`\`html
+<table width="100%" cellpadding="0" cellspacing="0" style="max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif; line-height: 1.6;">
+  <tr>
+    <td style="padding: 20px;">
+      <h2 style="color: #333; font-size: 20px; margin: 0 0 15px 0;">Greeting</h2>
+      <p style="color: #555; font-size: 16px; margin: 0 0 15px 0;">Email content with proper formatting...</p>
+      <ul style="color: #555; font-size: 16px; margin: 15px 0; padding-left: 20px;">
+        <li style="margin-bottom: 8px;">Bullet point item</li>
+      </ul>
+      <p style="color: #555; font-size: 16px; margin: 15px 0;">
+        <a href="{{link}}" style="color: #0066cc; text-decoration: none; font-weight: bold;">Call to Action</a>
+      </p>
+      <p style="color: #555; font-size: 16px; margin: 15px 0 0 0;">Best regards,<br>{{Recruiter Name}}</p>
+    </td>
+  </tr>
+</table>
+\`\`\`
+
 IMPORTANT:
-- The campaign example structure is a GUIDELINE and HINT for sequencing, not a strict template. Adapt it to match the draft requirements, ensuring a progressive story.
 - Create {steps} email steps over {duration} days, with delays in business days (first email delay: 0, immediately; subsequent delays based on progression).
 - Use the example progression as a hint: {examples}
 - Include personalization tokens: {{First Name}}, {{Company Name}}, {{Current Company}}
@@ -205,9 +246,9 @@ IMPORTANT:
 - Incorporate the specified tone and target audience
 - Use the guideline structure but adapt content to the specific draft
 - Incorporate the additionalContext content verbatim where appropriate.
-- CRITICALLY IMPORTANT : Each email must have a clear call to action (CTA).
-- CRITICALLY IMPORTANT : Structure content for readability: Use short paragraphs (2-3 sentences max) or bullet points for lists.
-- CRITICALLY IMPORTANT : Ensure the specified tone : {tone} influences both language and writing style.
+- CRITICALLY IMPORTANT: Each email must have a clear call to action (CTA) formatted as an HTML link.
+- CRITICALLY IMPORTANT: Structure content for readability using proper HTML formatting with headings, paragraphs, and lists.
+- CRITICALLY IMPORTANT: Ensure the specified tone: {tone} influences both language and HTML styling.
 - Incorporate company knowledge base data and additionalContext verbatim where appropriate, aligning with the tone and goal.`
   },
 

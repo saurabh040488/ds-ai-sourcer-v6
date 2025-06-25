@@ -84,8 +84,8 @@ ${relevantCompanyCollateral.map((item, index) => {
 }).join('\n\n')}
 
 COLLATERAL USAGE INSTRUCTIONS:
-- For 'who_we_are', 'mission_statements', 'benefits', 'dei_statements', and 'newsletters': Integrate this content directly into the email body
-- For 'talent_community_link', 'career_site_link', and 'company_logo': Use as links in calls to action
+- For 'who_we_are', 'mission_statements', 'benefits', 'dei_statements', and 'newsletters': Integrate this content directly into the email body with proper HTML formatting
+- For 'talent_community_link', 'career_site_link', and 'company_logo': Use as properly formatted HTML links and images
 - Prioritize relevant collateral for each email step based on the email's purpose
 - Maintain the specified tone and length while incorporating collateral
 - Use collateral to enhance personalization and authenticity
@@ -94,7 +94,13 @@ COLLATERAL USAGE INSTRUCTIONS:
     collateralSection = 'COMPANY KNOWLEDGE BASE (COLLATERAL):\nNo company collateral available for this campaign.\n';
   }
 
-  const systemPrompt = `${promptConfig.system}
+  // Prepare the system prompt with HTML email requirements
+  const systemPrompt = promptConfig.system
+    .replace('{lengthSpec.range}', lengthSpec.range)
+    .replace('{lengthSpec.description}', lengthSpec.description)
+    .replace('{tone}', prompt.tone);
+
+  const userPrompt = `Generate the email sequence based on the provided parameters:
 
 Campaign Type: ${prompt.campaignType}
 Target Audience: ${prompt.targetAudience}
@@ -102,10 +108,7 @@ Campaign Goal: ${prompt.campaignGoal}
 Company: ${prompt.companyName}
 Recruiter: ${prompt.recruiterName}
 Tone: ${prompt.tone}
-
-EMAIL LENGTH REQUIREMENTS:
-- Target length: ${lengthSpec.range} (${lengthSpec.description})
-- CRITICAL: Each email must be approximately ${lengthSpec.range}. This is a strict requirement.
+Email Length: ${lengthSpec.range}
 
 ${collateralSection}
 
@@ -113,9 +116,18 @@ Content Sources:
 ${prompt.contentSources.join('\n')}
 
 Additional Instructions:
-${prompt.aiInstructions}`;
+${prompt.aiInstructions}
 
-  const userPrompt = `Generate the email sequence based on the provided parameters. CRITICAL: Each email must be ${lengthSpec.range} in length with a ${prompt.tone} tone. Integrate company collateral naturally into the emails where appropriate.`;
+CRITICAL: Each email must be HTML-formatted with proper markup, including:
+- Responsive table-based layout
+- Inline CSS styling
+- Proper text formatting (bold, italics, etc.)
+- Organized bullet points or numbered lists
+- Clickable hyperlinks with proper HTML anchor tags
+- Clear heading hierarchy
+- Proper paragraph spacing and formatting
+
+Generate a sequence of HTML emails that follow email design best practices.`;
 
   try {
     console.log('📤 Sending campaign generation request to OpenAI...');
@@ -247,69 +259,72 @@ ${prompt.aiInstructions}`;
         }
       }
       
-      // Add company information based on email index
-      let companyContent = '';
-      let callToAction = '';
+      // Create HTML email template
+      return `<table width="100%" cellpadding="0" cellspacing="0" style="max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif; line-height: 1.6;">
+  <tr>
+    <td style="padding: 20px;">
+      <h2 style="color: #333; font-size: 20px; margin: 0 0 15px 0;">Hi {{First Name}},</h2>
       
-      if (index === 0 && companyInfo) {
-        companyContent = `\n\n${companyInfo}`;
-      } else if (index === 1 && companyMission) {
-        companyContent = `\n\n${companyMission}`;
-      } else if (index === 2 && companyBenefits) {
-        companyContent = `\n\nOur benefits include: ${companyBenefits}`;
-      }
+      <p style="color: #555; font-size: 16px; margin: 0 0 15px 0;">
+        ${title} at <strong style="color: #333;">{{Company Name}}</strong>.
+      </p>
       
-      // Add call to action with links if available
-      if (talentCommunityLink && index === 2) {
-        callToAction = `\n\nJoin our talent community to stay updated on future opportunities: ${talentCommunityLink}`;
-      } else if (careerSiteLink) {
-        callToAction = `\n\nLearn more about opportunities at ${prompt.companyName}: ${careerSiteLink}`;
-      }
+      <p style="color: #555; font-size: 16px; margin: 0 0 15px 0;">
+        ${prompt.aiInstructions || 'We have exciting opportunities that align with your background and career goals.'}
+      </p>
       
-      if (prompt.emailLength === 'short') {
-        return `Hi {{First Name}},
-
-${title} at {{Company Name}}. ${prompt.aiInstructions ? prompt.aiInstructions.split('.')[0] + '.' : 'We have exciting opportunities for you.'}${callToAction ? '\n\n' + callToAction.split('.')[0] + '.' : ''}
-
-Best regards,
-${prompt.recruiterName}`;
-      } else if (prompt.emailLength === 'medium') {
-        return `Hi {{First Name}},
-
-I hope this message finds you well. ${title} at {{Company Name}}.
-
-${prompt.aiInstructions || 'We have exciting opportunities that align with your background and career goals.'} I believe your experience at {{Current Company}} makes you an excellent fit for our team.${companyContent.substring(0, 200)}${callToAction}
-
-I'd love to discuss how your skills and expertise could contribute to our organization. Would you be available for a brief conversation this week?
-
-Best regards,
-${prompt.recruiterName}`;
-      } else if (prompt.emailLength === 'long') {
-        return `Hi {{First Name}},
-
-I hope this message finds you well. ${title} at {{Company Name}}.
-
-${prompt.aiInstructions || 'We have exciting opportunities that align with your background and career goals.'} I've been particularly impressed by your experience at {{Current Company}} and believe you would be a valuable addition to our team.${companyContent}
-
-Our organization offers competitive compensation, comprehensive benefits, and a supportive work environment focused on professional growth and development. We're currently expanding our team and looking for talented professionals like yourself.${callToAction}
-
-I'd love to schedule a time to discuss these opportunities in more detail and answer any questions you might have. Would you be available for a brief conversation this week?
-
-Best regards,
-${prompt.recruiterName}`;
-      } else {
-        // Default to concise (60-80 words)
-        return `Hi {{First Name}},
-
-I hope this message finds you well. ${title} at {{Company Name}}.
-
-${prompt.aiInstructions || 'We have exciting opportunities that align with your background and career goals.'}${companyContent.substring(0, 100)}
-
-Would you be open to a brief conversation about these opportunities?${callToAction ? '\n\n' + callToAction : ''}
-
-Best regards,
-${prompt.recruiterName}`;
-      }
+      ${index === 0 && companyInfo ? `
+      <p style="color: #555; font-size: 16px; margin: 0 0 15px 0;">
+        ${companyInfo}
+      </p>
+      ` : ''}
+      
+      ${index === 1 && companyMission ? `
+      <p style="color: #555; font-size: 16px; margin: 0 0 15px 0;">
+        ${companyMission}
+      </p>
+      ` : ''}
+      
+      ${index === 2 && companyBenefits ? `
+      <div style="margin: 15px 0;">
+        <p style="color: #555; font-size: 16px; margin: 0 0 10px 0;">Our benefits include:</p>
+        <ul style="color: #555; font-size: 16px; margin: 0; padding-left: 20px;">
+          <li style="margin-bottom: 8px;">${companyBenefits}</li>
+        </ul>
+      </div>
+      ` : ''}
+      
+      ${index === 0 ? `
+      <p style="color: #555; font-size: 16px; margin: 15px 0;">
+        Would you be interested in exploring opportunities with us?
+      </p>
+      ` : index === 1 ? `
+      <p style="color: #555; font-size: 16px; margin: 15px 0;">
+        I'd love to discuss how your experience at <strong style="color: #333;">{{Current Company}}</strong> could be valuable to our team.
+      </p>
+      ` : `
+      <p style="color: #555; font-size: 16px; margin: 15px 0;">
+        Would you be available for a brief conversation this week?
+      </p>
+      `}
+      
+      ${(talentCommunityLink && index === 2) ? `
+      <div style="margin: 20px 0;">
+        <a href="${talentCommunityLink}" style="display: inline-block; padding: 10px 20px; background-color: #0066cc; color: white; text-decoration: none; border-radius: 4px; font-weight: bold;">Join Our Talent Community</a>
+      </div>
+      ` : (careerSiteLink ? `
+      <p style="color: #555; font-size: 16px; margin: 15px 0;">
+        Learn more about opportunities at ${prompt.companyName}: <a href="${careerSiteLink}" style="color: #0066cc; text-decoration: none; font-weight: bold;">View Career Site</a>
+      </p>
+      ` : '')}
+      
+      <p style="color: #555; font-size: 16px; margin: 15px 0 0 0;">
+        Best regards,<br>
+        <strong style="color: #333;">{{Your Name}}</strong>
+      </p>
+    </td>
+  </tr>
+</table>`;
     };
     
     const fallbackSequence: EmailStep[] = [
