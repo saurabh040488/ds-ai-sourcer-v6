@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, Users, Bookmark, Settings, HelpCircle, Sparkles, ChevronLeft, ChevronRight, LogOut, User, FileText, Briefcase, Building, Cpu, Bot } from 'lucide-react';
+import { Search, Bookmark, Sparkles, ChevronLeft, ChevronRight, LogOut, User, FileText, Briefcase, Building, Cpu, Bot } from 'lucide-react';
 import { AuthContext } from './AuthWrapper';
 import { Project } from '../lib/supabase';
 import DocumentationModal from './DocumentationModal';
@@ -69,28 +69,7 @@ const Sidebar: React.FC<SidebarProps> = ({
       label: 'Company Branding', 
       badge: null,
       description: 'Manage company profiles and collateral'
-    },
-    { 
-      id: 'contacts', 
-      icon: Users, 
-      label: 'Contacts', 
-      badge: null,
-      description: 'Manage candidate contacts'
-    },
-    { 
-      id: 'usage', 
-      icon: Sparkles, 
-      label: 'Usage', 
-      badge: null,
-      description: 'View AI usage and analytics'
-    },
-    { 
-      id: 'settings', 
-      icon: Settings, 
-      label: 'Settings', 
-      badge: null,
-      description: 'Application settings and preferences'
-    },
+    }
   ];
 
   const handleSignOut = async () => {
@@ -167,7 +146,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                       ? isBeta
                         ? 'bg-gradient-to-r from-purple-100 to-blue-100 text-purple-700 shadow-sm border border-purple-200'
                         : 'bg-purple-100 text-purple-700 shadow-sm'
-                      : 'text-gray-700 hover: bg-gray-100 hover:text-gray-900'
+                      : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
                   }`}
                   title={shouldCollapse ? item.label : undefined}
                 >
