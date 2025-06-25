@@ -59,7 +59,7 @@ function cleanJsonResponse(response: string): string {
   return cleaned;
 }
 
-function parseJsonSafely(jsonString: string): any {
+export function parseJsonSafely(jsonString: string): any {
   console.log('🔍 Attempting to parse JSON safely...');
   
   try {
