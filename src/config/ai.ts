@@ -169,18 +169,20 @@ FORMATTING EXAMPLES:
 EMAIL LENGTH REQUIREMENTS:
 - Target length: {lengthSpec.range} ({lengthSpec.description})
 - Tone: {tone} (apply the following guidelines based on tone):
-  - **Professional**: Use formal language, structured layout, neutral colors
-  - **Friendly**: Use warm colors, conversational tone, approachable design
-  - **Casual**: Use relaxed formatting, informal language, vibrant colors
-  - **Formal**: Use conservative design, precise language, traditional layout
+  - **Professional**: Use formal language, start with 'Dear {{First Name}}' or 'Hello {{First Name}},' end with 'Sincerely, {{Recruiter Name}}.' Use complete sentences, a neutral, authoritative voice, and concise paragraphs for credibility.
+  - **Friendly**: Use warm, conversational language, start with 'Hey {{First Name}}!' or 'Hi {{First Name}},', end with 'Best, {{Recruiter Name}}.' Use short sentences, supportive phrases (e.g., 'We're excited to help!'), and an approachable style.
+  - **Casual**: Use informal language with slang or contractions, start with 'Hey {{First Name}}' or 'What's up, {{First Name}}?', end with 'Cheers, {{Recruiter Name}}.' Use short, punchy sentences and a playful, relatable tone.
+  - **Formal**: Use precise, sophisticated language, start with 'Dear {{First Name}}' or 'To {{First Name}},', end with 'Yours sincerely, {{Recruiter Name}}.' Avoid contractions, use a respectful, distant voice, and structured paragraphs.
+- CRITICAL: Each email must be approximately {lengthSpec.range} words, structured for readability with short paragraphs or bullet points. This is a strict requirement.
 
 COMPANY KNOWLEDGE BASE (COLLATERAL):
 The following company collateral should be integrated into the campaign emails:
 - For 'who_we_are', 'mission_statements', 'benefits', 'dei_statements', and 'newsletters': Use the content directly in the email body with proper HTML formatting
-- For 'talent_community_link', 'career_site_link', and 'company_logo': Use as properly formatted HTML links and images
+- For 'talent_community_link', 'career_site_link', and 'company_logo': Use as properly formatted HTML links. Use as links in calls to action
 - Prioritize relevant collateral for each email step based on the email's purpose
 - Maintain the specified tone and length while incorporating collateral
 - Use collateral to enhance personalization and authenticity
+- For links, create appropriate call-to-action text (e.g., "Join our talent community" for talent_community_link)
 
 IMPORTANT: The campaign example structure above is a GUIDELINE and HINT for sequencing your campaign, not a strict template. Use it to understand the flow and approach, but create content that matches the specific draft requirements.
 
@@ -237,6 +239,7 @@ Each email content should follow this structure:
 \`\`\`
 
 IMPORTANT:
+- The campaign example structure is a GUIDELINE and HINT for sequencing, not a strict template. Adapt it to match the draft requirements, ensuring a progressive story.
 - Create {steps} email steps over {duration} days, with delays in business days (first email delay: 0, immediately; subsequent delays based on progression).
 - Use the example progression as a hint: {examples}
 - Include personalization tokens: {{First Name}}, {{Company Name}}, {{Current Company}}
@@ -247,8 +250,8 @@ IMPORTANT:
 - Use the guideline structure but adapt content to the specific draft
 - Incorporate the additionalContext content verbatim where appropriate.
 - CRITICALLY IMPORTANT: Each email must have a clear call to action (CTA) formatted as an HTML link.
-- CRITICALLY IMPORTANT: Structure content for readability using proper HTML formatting with headings, paragraphs, and lists.
-- CRITICALLY IMPORTANT: Ensure the specified tone: {tone} influences both language and HTML styling.
+- CRITICALLY IMPORTANT: Structure content for readability using proper HTML formatting with headings, paragraphs, and lists. Use short paragraphs (2-3 sentences max) or bullet points for lists.
+- CRITICALLY IMPORTANT: Ensure the specified tone: {tone} influences both language and writing style.
 - Incorporate company knowledge base data and additionalContext verbatim where appropriate, aligning with the tone and goal.`
   },
 
