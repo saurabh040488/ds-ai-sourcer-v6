@@ -2,7 +2,6 @@ import React, { useState, useContext, useEffect } from 'react';
 import AuthWrapper, { AuthContext } from './components/AuthWrapper';
 import Sidebar from './components/Sidebar';
 import SearchView from './components/SearchView';
-import CampaignView from './components/CampaignView';
 import BetaCampaignView from './components/beta/BetaCampaignView';
 import ShortlistView from './components/ShortlistView';
 import JobPostingsView from './components/JobPostingsView';
@@ -201,7 +200,7 @@ function AppContent() {
 
   const handleViewChange = (view: string) => {
     setCurrentView(view);
-    if (view !== 'campaigns' && view !== 'beta-campaigns') {
+    if (view !== 'beta-campaigns') {
       setIsCreatingCampaign(false);
     }
   };
@@ -216,13 +215,6 @@ function AppContent() {
             isLoading={isLoading}
             recentSearches={recentSearches}
             candidates={candidates}
-            currentProject={currentProject}
-          />
-        );
-      case 'campaigns':
-        return (
-          <CampaignView 
-            onCampaignCreationChange={setIsCreatingCampaign}
             currentProject={currentProject}
           />
         );

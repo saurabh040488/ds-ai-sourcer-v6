@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, Users, Bookmark, Mail, Settings, HelpCircle, Sparkles, ChevronLeft, ChevronRight, LogOut, User, FileText, Briefcase, Building, Cpu, Bot } from 'lucide-react';
+import { Search, Users, Bookmark, Settings, HelpCircle, Sparkles, ChevronLeft, ChevronRight, LogOut, User, FileText, Briefcase, Building, Cpu, Bot } from 'lucide-react';
 import { AuthContext } from './AuthWrapper';
 import { Project } from '../lib/supabase';
 import DocumentationModal from './DocumentationModal';
@@ -50,18 +50,11 @@ const Sidebar: React.FC<SidebarProps> = ({
       description: 'Manage saved candidate collections'
     },
     { 
-      id: 'campaigns', 
-      icon: Mail, 
-      label: 'Campaigns', 
-      badge: '3',
-      description: 'Create and manage email campaigns'
-    },
-    { 
       id: 'beta-campaigns', 
       icon: Bot, 
-      label: 'Beta Campaigns', 
+      label: 'Campaigns', 
       badge: 'AI',
-      description: 'AI-powered campaign creation (Beta)'
+      description: 'AI-powered campaign creation'
     },
     { 
       id: 'job-postings', 
@@ -174,7 +167,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                       ? isBeta
                         ? 'bg-gradient-to-r from-purple-100 to-blue-100 text-purple-700 shadow-sm border border-purple-200'
                         : 'bg-purple-100 text-purple-700 shadow-sm'
-                      : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
+                      : 'text-gray-700 hover: bg-gray-100 hover:text-gray-900'
                   }`}
                   title={shouldCollapse ? item.label : undefined}
                 >
