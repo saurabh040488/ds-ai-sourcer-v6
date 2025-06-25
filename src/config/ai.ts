@@ -166,14 +166,19 @@ FORMATTING EXAMPLES:
 - Lists: <ul style="margin: 10px 0; padding-left: 20px;"><li>Item</li></ul>
 - Headings: <h2 style="color: #333; font-size: 20px; margin: 15px 0 10px 0;">Heading</h2>
 
-EMAIL LENGTH REQUIREMENTS:
-- Target length: {lengthSpec.range} ({lengthSpec.description})
+CRITICAL WORD COUNT REQUIREMENTS:
+- IMPORTANT: Word count refers to READABLE TEXT ONLY, not HTML markup
+- Count only the words that appear when the email is rendered/displayed to the user
+- HTML tags, CSS styles, and markup do not count toward word limits
+- Target length: {lengthSpec.range} ({lengthSpec.description}) of READABLE CONTENT
+- Example: "<p>Hello world</p>" counts as 2 words, not 4
+- Example: "<strong>Important message</strong>" counts as 2 words, not 3
 - Tone: {tone} (apply the following guidelines based on tone):
   - **Professional**: Use formal language, start with 'Dear {{First Name}}' or 'Hello {{First Name}},' end with 'Sincerely, {{Recruiter Name}}.' Use complete sentences, a neutral, authoritative voice, and concise paragraphs for credibility.
   - **Friendly**: Use warm, conversational language, start with 'Hey {{First Name}}!' or 'Hi {{First Name}},', end with 'Best, {{Recruiter Name}}.' Use short sentences, supportive phrases (e.g., 'We're excited to help!'), and an approachable style.
   - **Casual**: Use informal language with slang or contractions, start with 'Hey {{First Name}}' or 'What's up, {{First Name}}?', end with 'Cheers, {{Recruiter Name}}.' Use short, punchy sentences and a playful, relatable tone.
   - **Formal**: Use precise, sophisticated language, start with 'Dear {{First Name}}' or 'To {{First Name}},', end with 'Yours sincerely, {{Recruiter Name}}.' Avoid contractions, use a respectful, distant voice, and structured paragraphs.
-- CRITICAL: Each email must be approximately {lengthSpec.range} words, structured for readability with short paragraphs or bullet points. This is a strict requirement.
+- CRITICAL: Each email must contain approximately {lengthSpec.range} words of READABLE TEXT (excluding HTML markup), structured for readability with short paragraphs or bullet points. This is a strict requirement.
 
 COMPANY KNOWLEDGE BASE (COLLATERAL):
 The following company collateral should be integrated into the campaign emails:
@@ -276,7 +281,7 @@ Each email content should follow this professional structure with modern design 
                             
                             <!-- Main Message -->
                             <p style="color: #4a5568; font-size: 16px; line-height: 1.6; margin: 0 0 20px 0;">
-                                [Main email content with proper formatting and personalization]
+                                [Main email content with proper formatting and personalization - READABLE CONTENT COUNTS TOWARD WORD LIMIT]
                             </p>
                             
                             <!-- Highlighted Benefits/Features Box -->
@@ -386,6 +391,26 @@ Each email content should follow this professional structure with modern design 
 </html>
 \`\`\`
 
+CRITICAL HTML EMAIL TEMPLATE STRUCTURE:
+Each email content should follow this structure:
+\`\`\`html
+<table width="100%" cellpadding="0" cellspacing="0" style="max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif; line-height: 1.6;">
+  <tr>
+    <td style="padding: 20px;">
+      <h2 style="color: #333; font-size: 20px; margin: 0 0 15px 0;">Greeting</h2>
+      <p style="color: #555; font-size: 16px; margin: 0 0 15px 0;">Email content with proper formatting...</p>
+      <ul style="color: #555; font-size: 16px; margin: 15px 0; padding-left: 20px;">
+        <li style="margin-bottom: 8px;">Bullet point item</li>
+      </ul>
+      <p style="color: #555; font-size: 16px; margin: 15px 0;">
+        <a href="{{link}}" style="color: #0066cc; text-decoration: none; font-weight: bold;">Call to Action</a>
+      </p>
+      <p style="color: #555; font-size: 16px; margin: 15px 0 0 0;">Best regards,<br>{{Recruiter Name}}</p>
+    </td>
+  </tr>
+</table>
+\`\`\`
+
 IMPORTANT:
 - The campaign example structure is a GUIDELINE and HINT for sequencing, not a strict template. Adapt it to match the draft requirements, ensuring a progressive story.
 - Create {steps} email steps over {duration} days, with delays in business days (first email delay: 0, immediately; subsequent delays based on progression).
@@ -393,7 +418,7 @@ IMPORTANT:
 - Include personalization tokens: {{First Name}}, {{Company Name}}, {{Current Company}}
 - First email should have delay: 0 and delayUnit: "immediately"
 - Subsequent emails should have appropriate delays in "business days"
-- Strictly adhere to the specified email length of {lengthSpec.range}
+- Strictly adhere to the specified email length of {lengthSpec.range} READABLE WORDS (excluding HTML markup)
 - Incorporate the specified tone and target audience
 - Use the guideline structure but adapt content to the specific draft
 - Incorporate the additionalContext content verbatim where appropriate.
