@@ -4,6 +4,7 @@ import { CampaignExample, CampaignDraft, AssistantMessage } from '../types';
 import { campaignExamples, findCampaignExampleByGoal, findCampaignExampleById } from '../data/campaignExamples';
 import { type EmailStep } from './openai';
 import { CompanyCollateral } from '../lib/supabase';
+import { parseJsonSafely } from './companyBranding';
 
 // Initialize OpenAI client
 const openai = new OpenAI({
@@ -187,8 +188,11 @@ Please process this input, classify against available campaign examples, and pro
     const cleanedResponse = cleanJsonResponse(response);
     console.log('🧹 Cleaned response:', cleanedResponse);
 
-    // Parse the JSON response
-    const parsedResponse = JSON.parse(cleanedResponse);
+    // Parse the JSON response using safe parsing
+    const parsedResponse = parseJsonSafely(cleanedResponse);
+    if (!parsedResponse) {
+      throw new Error('Failed to parse AI response as JSON');
+    }
     
     // Validate and enhance the response
     const result: AssistantResponse = {
@@ -522,8 +526,11 @@ CRITICAL: Format all emails with proper HTML markup, inline CSS, and responsive 
     const cleanedResponse = cleanJsonResponse(response);
     console.log('🧹 Cleaned campaign response:', cleanedResponse);
 
-    // Parse and validate the response
-    const result = JSON.parse(cleanedResponse);
+    // Parse and validate the response using safe parsing
+    const result = parseJsonSafely(cleanedResponse);
+    if (!result) {
+      throw new Error('Failed to parse campaign generation response as JSON');
+    }
     
     // Ensure email steps have proper structure
     const emailSteps: EmailStep[] = result.emailSteps.map((step: any, index: number) => ({
