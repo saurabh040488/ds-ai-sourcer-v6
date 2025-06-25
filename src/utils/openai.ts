@@ -115,9 +115,19 @@ ${prompt.contentSources.join('\n')}
 Additional Instructions:
 ${prompt.aiInstructions}`;
 
+  const userPrompt = `Generate the email sequence based on the provided parameters. CRITICAL: Each email must be ${lengthSpec.range} in length with a ${prompt.tone} tone. Integrate company collateral naturally into the emails where appropriate.`;
+
   try {
     console.log('📤 Sending campaign generation request to OpenAI...');
     console.log('🔧 Using model:', modelConfig.model, 'with config:', modelConfig);
+    
+    // Add detailed logging of the exact prompts being sent to the LLM
+    console.group('🔍 DETAILED LLM PROMPT LOGGING');
+    console.log('System Prompt:');
+    console.log(systemPrompt);
+    console.log('\nUser Prompt:');
+    console.log(userPrompt);
+    console.groupEnd();
     
     const completion = await openai.chat.completions.create({
       model: modelConfig.model,
@@ -128,7 +138,7 @@ ${prompt.aiInstructions}`;
         },
         {
           role: "user",
-          content: `Generate the email sequence based on the provided parameters. CRITICAL: Each email must be ${lengthSpec.range} in length with a ${prompt.tone} tone. Integrate company collateral naturally into the emails where appropriate.`
+          content: userPrompt
         }
       ],
       temperature: modelConfig.temperature,
@@ -142,7 +152,7 @@ ${prompt.aiInstructions}`;
 
     // Log the AI interaction
     logAIInteraction('Campaign Generation', 
-      `System: ${systemPrompt}\n\nUser: Generate the email sequence based on the provided parameters.`, 
+      `System: ${systemPrompt}\n\nUser: ${userPrompt}`, 
       response,
       {
         model: modelConfig.model,
@@ -347,6 +357,14 @@ export async function generateCampaignName(campaignType: string, targetAudience:
   try {
     console.log('📤 Sending campaign name generation request to OpenAI...');
     console.log('🔧 Using model:', modelConfig.model);
+    
+    // Add detailed logging of the exact prompts being sent to the LLM
+    console.group('🔍 DETAILED LLM PROMPT LOGGING - CAMPAIGN NAME');
+    console.log('System Prompt:');
+    console.log(promptConfig.system);
+    console.log('\nUser Prompt:');
+    console.log(userPrompt);
+    console.groupEnd();
     
     const completion = await openai.chat.completions.create({
       model: modelConfig.model,
