@@ -4,7 +4,6 @@ import { CampaignExample, CampaignDraft, AssistantMessage } from '../types';
 import { campaignExamples, findCampaignExampleByGoal, findCampaignExampleById } from '../data/campaignExamples';
 import { type EmailStep } from './openai';
 import { CompanyCollateral } from '../lib/supabase';
-import { parseJsonSafely } from './companyBranding';
 
 // Initialize OpenAI client
 const openai = new OpenAI({
@@ -28,6 +27,110 @@ function cleanJsonResponse(response: string): string {
     .replace(/^```\s*/i, '')
     .replace(/\s*```$/i, '')
     .trim();
+}
+
+// Safe JSON parsing function specific to campaign assistant
+function parseJsonSafely(jsonString: string): any {
+  console.log('🔍 Campaign Assistant: Attempting to parse JSON safely...');
+  
+  try {
+    // First attempt: direct parsing
+    return JSON.parse(jsonString);
+  } catch (firstError) {
+    console.log('❌ Campaign Assistant: First parse attempt failed:', firstError.message);
+    
+    try {
+      // Second attempt: try to fix common JSON issues
+      let fixedJson = jsonString;
+      
+      // Fix unescaped quotes in string values
+      fixedJson = fixedJson.replace(
+        /"([^"]*)":\s*"([^"]*(?:\\.[^"]*)*)"/g,
+        (match, key, value) => {
+          // Don't double-escape already escaped quotes
+          const cleanValue = value.replace(/\\"/g, '"').replace(/"/g, '\\"');
+          return `"${key}": "${cleanValue}"`;
+        }
+      );
+      
+      // Fix array string values
+      fixedJson = fixedJson.replace(
+        /"([^"]*)":\s*\[([^\]]*)\]/g,
+        (match, key, arrayContent) => {
+          // Fix quotes in array elements
+          const fixedArrayContent = arrayContent.replace(
+            /"([^"]*(?:\\.[^"]*)*)"/g,
+            (itemMatch, itemValue) => {
+              const cleanItemValue = itemValue.replace(/\\"/g, '"').replace(/"/g, '\\"');
+              return `"${cleanItemValue}"`;
+            }
+          );
+          return `"${key}": [${fixedArrayContent}]`;
+        }
+      );
+      
+      console.log('🔧 Campaign Assistant: Attempting to parse fixed JSON...');
+      return JSON.parse(fixedJson);
+    } catch (secondError) {
+      console.log('❌ Campaign Assistant: Second parse attempt failed:', secondError.message);
+      
+      try {
+        // Third attempt: manually construct object from key-value pairs
+        console.log('🔧 Campaign Assistant: Attempting manual JSON reconstruction...');
+        
+        const result: any = {};
+        
+        // Extract basic fields with improved regex
+        const extractField = (fieldName: string, defaultValue: any = '') => {
+          const regex = new RegExp(`"${fieldName}":\\s*"([^"]*(?:\\\\.[^"]*)*)"`, 'i');
+          const match = jsonString.match(regex);
+          return match ? match[1].replace(/\\"/g, '"') : defaultValue;
+        };
+        
+        const extractArray = (fieldName: string, defaultValue: any[] = []) => {
+          const regex = new RegExp(`"${fieldName}":\\s*\\[(.*?)\\]`, 'is');
+          const match = jsonString.match(regex);
+          if (match) {
+            const arrayContent = match[1];
+            const items = arrayContent.match(/"([^"]*(?:\\.[^"]*)*)"/g);
+            return items ? items.map(item => item.slice(1, -1).replace(/\\"/g, '"')) : defaultValue;
+          }
+          return defaultValue;
+        };
+        
+        const extractObject = (fieldName: string, defaultValue: any = {}) => {
+          const regex = new RegExp(`"${fieldName}":\\s*\\{([^}]*)\\}`, 'is');
+          const match = jsonString.match(regex);
+          if (match) {
+            try {
+              return JSON.parse(`{${match[1]}}`);
+            } catch {
+              return defaultValue;
+            }
+          }
+          return defaultValue;
+        };
+        
+        // Extract common campaign assistant fields
+        result.message = extractField('message', 'I\'m here to help you create your campaign.');
+        result.suggestions = extractArray('suggestions', []);
+        result.campaignDraft = extractObject('campaignDraft', {});
+        result.nextStep = extractField('nextStep', 'goal');
+        result.isComplete = extractField('isComplete', 'false') === 'true';
+        
+        // For campaign generation responses
+        result.campaignData = extractObject('campaignData', null);
+        result.emailSteps = extractArray('emailSteps', []);
+        
+        console.log('✅ Campaign Assistant: Manual JSON reconstruction successful:', result);
+        return result;
+        
+      } catch (thirdError) {
+        console.error('❌ Campaign Assistant: All JSON parsing attempts failed:', thirdError.message);
+        throw new Error(`Failed to parse JSON after multiple attempts: ${firstError.message}`);
+      }
+    }
+  }
 }
 
 export async function processUserInput(
@@ -399,8 +502,13 @@ HTML STRUCTURE GUIDELINES:
 CAMPAIGN EXAMPLE GUIDELINE:
 ${JSON.stringify(matchingExample, null, 2)}
 
-EMAIL LENGTH REQUIREMENTS:
-- Target length: ${lengthSpec.range} (${lengthSpec.description})
+CRITICAL WORD COUNT REQUIREMENTS:
+- IMPORTANT: Word count refers to READABLE TEXT ONLY, not HTML markup
+- Count only the words that appear when the email is rendered/displayed to the user
+- HTML tags, CSS styles, and markup do not count toward word limits
+- Target length: ${lengthSpec.range} (${lengthSpec.description}) of READABLE CONTENT
+- Example: "<p>Hello world</p>" counts as 2 words, not 4
+- Example: "<strong>Important message</strong>" counts as 2 words, not 3
 - Tone: ${draft.tone || 'professional'} (apply the following guidelines based on tone):
   - **Professional**: Use formal language, structured layout, neutral colors
   - **Friendly**: Use warm colors, conversational tone, approachable design
@@ -427,23 +535,171 @@ ADDITIONAL CONTEXT USAGE:
 - Integrate this content naturally into the emails while preserving its original details and nuances
 
 CRITICAL HTML EMAIL TEMPLATE STRUCTURE:
-Each email content should follow this structure:
+Each email content should follow this professional structure with modern design elements:
+
 \`\`\`html
-<table width="100%" cellpadding="0" cellspacing="0" style="max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif; line-height: 1.6;">
-  <tr>
-    <td style="padding: 20px;">
-      <h2 style="color: #333; font-size: 20px; margin: 0 0 15px 0;">Greeting</h2>
-      <p style="color: #555; font-size: 16px; margin: 0 0 15px 0;">Email content with proper formatting...</p>
-      <ul style="color: #555; font-size: 16px; margin: 15px 0; padding-left: 20px;">
-        <li style="margin-bottom: 8px;">Bullet point item</li>
-      </ul>
-      <p style="color: #555; font-size: 16px; margin: 15px 0;">
-        <a href="{{link}}" style="color: #0066cc; text-decoration: none; font-weight: bold;">Call to Action</a>
-      </p>
-      <p style="color: #555; font-size: 16px; margin: 15px 0 0 0;">Best regards,<br>{{Recruiter Name}}</p>
-    </td>
-  </tr>
-</table>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{Subject}}</title>
+    <!--[if mso]>
+    <noscript>
+        <xml>
+            <o:OfficeDocumentSettings>
+                <o:PixelsPerInch>96</o:PixelsPerInch>
+            </o:OfficeDocumentSettings>
+        </xml>
+    </noscript>
+    <![endif]-->
+</head>
+<body style="margin: 0; padding: 0; background-color: #f8fafc; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">
+    <!-- Email Container -->
+    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #f8fafc; min-height: 100vh;">
+        <tr>
+            <td align="center" style="padding: 40px 20px;">
+                <!-- Main Email Content -->
+                <table width="600" cellpadding="0" cellspacing="0" border="0" style="max-width: 600px; width: 100%; background-color: #ffffff; border-radius: 12px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05); overflow: hidden;">
+                    
+                    <!-- Header Section with Brand Colors -->
+                    <tr>
+                        <td style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px 40px; text-align: center;">
+                            <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                                <tr>
+                                    <td style="text-align: center;">
+                                        <!-- Company Logo (if available) -->
+                                        <div style="margin-bottom: 15px;">
+                                            <span style="color: #ffffff; font-size: 24px; font-weight: bold; letter-spacing: 1px;">{{Company Name}}</span>
+                                        </div>
+                                        <!-- Header Title -->
+                                        <h1 style="color: #ffffff; font-size: 28px; font-weight: 600; margin: 0; line-height: 1.3; text-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                                            Healthcare Opportunities
+                                        </h1>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                    
+                    <!-- Main Content Section -->
+                    <tr>
+                        <td style="padding: 40px;">
+                            <!-- Personalized Greeting -->
+                            <h2 style="color: #1a202c; font-size: 24px; font-weight: 600; margin: 0 0 20px 0; line-height: 1.4;">
+                                Hello {{First Name}},
+                            </h2>
+                            
+                            <!-- Main Message -->
+                            <p style="color: #4a5568; font-size: 16px; line-height: 1.6; margin: 0 0 20px 0;">
+                                [Main email content with proper formatting and personalization - READABLE CONTENT COUNTS TOWARD WORD LIMIT]
+                            </p>
+                            
+                            <!-- Highlighted Benefits/Features Box -->
+                            <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #f7fafc; border-left: 4px solid #667eea; border-radius: 8px; margin: 25px 0;">
+                                <tr>
+                                    <td style="padding: 20px;">
+                                        <h3 style="color: #2d3748; font-size: 18px; font-weight: 600; margin: 0 0 15px 0;">
+                                            Why Join Our Team?
+                                        </h3>
+                                        <ul style="color: #4a5568; font-size: 15px; line-height: 1.6; margin: 0; padding-left: 20px;">
+                                            <li style="margin-bottom: 8px;">Competitive compensation and comprehensive benefits</li>
+                                            <li style="margin-bottom: 8px;">Professional development and career advancement</li>
+                                            <li style="margin-bottom: 8px;">Supportive work environment and team culture</li>
+                                        </ul>
+                                    </td>
+                                </tr>
+                            </table>
+                            
+                            <!-- Call-to-Action Section -->
+                            <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin: 30px 0;">
+                                <tr>
+                                    <td align="center">
+                                        <!-- Primary CTA Button -->
+                                        <table cellpadding="0" cellspacing="0" border="0">
+                                            <tr>
+                                                <td style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 8px; padding: 2px;">
+                                                    <a href="{{CTA_Link}}" style="display: block; padding: 16px 32px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #ffffff; text-decoration: none; font-weight: 600; font-size: 16px; border-radius: 6px; text-align: center; transition: all 0.3s ease;">
+                                                        Explore Opportunities
+                                                    </a>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                        
+                                        <!-- Secondary CTA Link -->
+                                        <p style="margin: 15px 0 0 0;">
+                                            <a href="{{Secondary_Link}}" style="color: #667eea; text-decoration: none; font-size: 14px; font-weight: 500;">
+                                                Learn more about our company →
+                                            </a>
+                                        </p>
+                                    </td>
+                                </tr>
+                            </table>
+                            
+                            <!-- Personal Touch -->
+                            <p style="color: #4a5568; font-size: 16px; line-height: 1.6; margin: 25px 0 0 0;">
+                                I'd love to discuss how your experience at <strong style="color: #2d3748;">{{Current Company}}</strong> 
+                                could be a valuable addition to our team.
+                            </p>
+                        </td>
+                    </tr>
+                    
+                    <!-- Footer Section -->
+                    <tr>
+                        <td style="background-color: #f8fafc; padding: 30px 40px; border-top: 1px solid #e2e8f0;">
+                            <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                                <tr>
+                                    <td>
+                                        <!-- Signature -->
+                                        <p style="color: #4a5568; font-size: 16px; line-height: 1.6; margin: 0 0 15px 0;">
+                                            Best regards,<br>
+                                            <strong style="color: #2d3748; font-size: 17px;">{{Recruiter Name}}</strong><br>
+                                            <span style="color: #718096; font-size: 14px;">Healthcare Talent Acquisition</span><br>
+                                            <span style="color: #718096; font-size: 14px;">{{Company Name}}</span>
+                                        </p>
+                                        
+                                        <!-- Contact Information -->
+                                        <table cellpadding="0" cellspacing="0" border="0" style="margin-top: 20px;">
+                                            <tr>
+                                                <td style="padding-right: 15px;">
+                                                    <a href="mailto:{{Recruiter_Email}}" style="color: #667eea; text-decoration: none; font-size: 14px;">
+                                                        📧 Email
+                                                    </a>
+                                                </td>
+                                                <td style="padding-right: 15px;">
+                                                    <a href="{{LinkedIn_Profile}}" style="color: #667eea; text-decoration: none; font-size: 14px;">
+                                                        💼 LinkedIn
+                                                    </a>
+                                                </td>
+                                                <td>
+                                                    <a href="{{Company_Website}}" style="color: #667eea; text-decoration: none; font-size: 14px;">
+                                                        🌐 Website
+                                                    </a>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                    
+                    <!-- Unsubscribe Footer -->
+                    <tr>
+                        <td style="background-color: #edf2f7; padding: 20px 40px; text-align: center;">
+                            <p style="color: #718096; font-size: 12px; line-height: 1.5; margin: 0;">
+                                You're receiving this email because you're a valued healthcare professional.<br>
+                                <a href="{{Unsubscribe_Link}}" style="color: #667eea; text-decoration: none;">Unsubscribe</a> | 
+                                <a href="{{Preferences_Link}}" style="color: #667eea; text-decoration: none;">Update Preferences</a>
+                            </p>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>
 \`\`\`
 
 RESPONSE FORMAT:
@@ -479,7 +735,7 @@ IMPORTANT:
 - First email should have delay: 0 and delayUnit: "immediately"
 - Subsequent emails should have appropriate delays in "business days"
 - Make content professional and engaging
-- Strictly adhere to the specified email length of ${lengthSpec.range}
+- Strictly adhere to the specified email length of ${lengthSpec.range} READABLE WORDS (excluding HTML markup)
 - Incorporate the specified tone and target audience
 - Use the guideline structure but adapt content to the specific draft
 - Incorporate the additionalContext content verbatim where appropriate
@@ -494,7 +750,8 @@ Generate the complete campaign with HTML-formatted email sequence using the guid
 CRITICAL: Each email must be ${lengthSpec.range} in length with a ${draft.tone || 'professional'} tone.
 CRITICAL: Use the additionalContext content exactly as provided without any modifications.
 CRITICAL: Integrate the company collateral naturally into the emails where appropriate.
-CRITICAL: Format all emails with proper HTML markup, inline CSS, and responsive design.`;
+CRITICAL: Format all emails with proper HTML markup, inline CSS, and responsive design.
+CRITICAL: Remember that word count refers to READABLE TEXT ONLY, not HTML markup.`;
 
   try {
     console.log('📤 Sending campaign generation request...');
