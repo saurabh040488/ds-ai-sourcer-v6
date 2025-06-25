@@ -3,6 +3,7 @@ import { getAIModelForTask } from '../config/ai';
 import { CampaignExample, CampaignDraft, AssistantMessage } from '../types';
 import { campaignExamples, findCampaignExampleByGoal, findCampaignExampleById } from '../data/campaignExamples';
 import { type EmailStep } from './openai';
+import { CompanyCollateral } from '../lib/supabase';
 
 // Initialize OpenAI client
 const openai = new OpenAI({
@@ -96,6 +97,13 @@ ADDITIONAL CONTEXT STEP SPECIFIC INSTRUCTIONS:
 - The user may provide blog posts, newsletters, company mission statements, product descriptions, case studies, press releases, marketing materials, or other content that must be used verbatim
 - Your role is to accept this content as-is and pass it through unchanged to maintain authenticity and ensure all original details are preserved
 - Do NOT provide any interpretation or summary of what the content contains - simply acknowledge receipt and move to the next step
+
+COMPANY BRANDING INTEGRATION:
+- The user has selected a company profile that contains branding information and collateral
+- This company information will be used to personalize the campaign
+- The company name is already set in the campaignDraft
+- When generating the campaign, relevant company collateral will be automatically selected based on the campaign type
+- Mention this integration when appropriate to reassure the user their campaign will be personalized
 
 RESPONSE FORMAT:
 Always respond with a JSON object containing:
@@ -310,11 +318,15 @@ Please process this input, classify against available campaign examples, and pro
   }
 }
 
-export async function generateCampaignFromDraft(draft: CampaignDraft): Promise<{
+export async function generateCampaignFromDraft(
+  draft: CampaignDraft, 
+  relevantCompanyCollateral: CompanyCollateral[] = []
+): Promise<{
   campaignData: any;
   emailSteps: EmailStep[];
 }> {
   console.log('🎯 Generating campaign from draft:', draft);
+  console.log('📚 Using relevant company collateral:', relevantCompanyCollateral.length, 'items');
 
   // Find matching campaign example using matchedExampleId first, then fallback to goal matching
   let matchingExample: CampaignExample | null = null;
@@ -348,6 +360,15 @@ export async function generateCampaignFromDraft(draft: CampaignDraft): Promise<{
 
   const lengthSpec = emailLengthSpecs[draft.emailLength || 'concise'];
 
+  // Format company collateral for the prompt
+  const formattedCollateral = relevantCompanyCollateral.map(item => {
+    return {
+      type: item.type,
+      content: item.content.substring(0, 300) + (item.content.length > 300 ? '...' : ''),
+      links: item.links
+    };
+  });
+
   const systemPrompt = `You are an expert email campaign generator. Create a professional email sequence based on the provided campaign draft and matching example guideline.
 
 CAMPAIGN EXAMPLE GUIDELINE:
@@ -357,6 +378,18 @@ EMAIL LENGTH REQUIREMENTS:
 - Target length: ${lengthSpec.range} (${lengthSpec.description})
 - Tone: ${draft.tone || 'professional'}
 - CRITICAL: Each email must be approximately ${lengthSpec.range}. This is a strict requirement.
+
+COMPANY KNOWLEDGE BASE (COLLATERAL):
+${relevantCompanyCollateral.length > 0 ? JSON.stringify(formattedCollateral, null, 2) : 'No company collateral available.'}
+
+COLLATERAL USAGE INSTRUCTIONS:
+- Integrate the company collateral naturally into the email content
+- For 'who_we_are', 'mission_statements', 'benefits', 'dei_statements', and 'newsletters': Use the content directly in the email body
+- For 'talent_community_link', 'career_site_link', and 'company_logo': Use as links in calls to action
+- Prioritize relevant collateral for each email step based on the email's purpose
+- Maintain the specified tone and length while incorporating collateral
+- Use collateral to enhance personalization and authenticity
+- For links, create appropriate call-to-action text (e.g., "Join our talent community" for talent_community_link)
 
 IMPORTANT: The campaign example structure above is a GUIDELINE and HINT for sequencing your campaign, not a strict template. Use it to understand the flow and approach, but create content that matches the specific draft requirements.
 
@@ -404,14 +437,16 @@ IMPORTANT:
 - Strictly adhere to the specified email length of ${lengthSpec.range}
 - Incorporate the specified tone and target audience
 - Use the guideline structure but adapt content to the specific draft
-- Incorporate the additionalContext content verbatim where appropriate`;
+- Incorporate the additionalContext content verbatim where appropriate
+- CRITICALLY IMPORTANT: Integrate company collateral naturally into the emails`;
 
   const userPrompt = `Campaign Draft:
 ${JSON.stringify(draft, null, 2)}
 
 Generate the complete campaign with email sequence using the guideline structure.
 CRITICAL: Each email must be ${lengthSpec.range} in length with a ${draft.tone || 'professional'} tone.
-CRITICAL: Use the additionalContext content exactly as provided without any modifications.`;
+CRITICAL: Use the additionalContext content exactly as provided without any modifications.
+CRITICAL: Integrate the company collateral naturally into the emails where appropriate.`;
 
   try {
     console.log('📤 Sending campaign generation request...');
@@ -469,7 +504,7 @@ CRITICAL: Use the additionalContext content exactly as provided without any modi
     console.error('❌ Error generating campaign:', error);
     
     // Fallback campaign generation
-    return createFallbackCampaign(draft, matchingExample);
+    return createFallbackCampaign(draft, matchingExample, relevantCompanyCollateral);
   }
 }
 
@@ -555,11 +590,16 @@ function createFallbackResponse(userInput: string, currentDraft: Partial<Campaig
   };
 }
 
-function createFallbackCampaign(draft: CampaignDraft, example: CampaignExample): {
+function createFallbackCampaign(
+  draft: CampaignDraft, 
+  example: CampaignExample,
+  relevantCompanyCollateral: CompanyCollateral[] = []
+): {
   campaignData: any;
   emailSteps: EmailStep[];
 } {
   console.log('🔄 Creating fallback campaign...');
+  console.log('📚 Using relevant company collateral:', relevantCompanyCollateral.length, 'items');
   
   // Get email length specifications
   const emailLengthSpecs = {
@@ -584,13 +624,72 @@ function createFallbackCampaign(draft: CampaignDraft, example: CampaignExample):
     aiInstructions: draft.additionalContext
   };
 
-  // Create email content based on length preference
+  // Extract company information from collateral
+  let companyInfo = '';
+  let companyBenefits = '';
+  let companyMission = '';
+  let talentCommunityLink = '';
+  let careerSiteLink = '';
+  
+  if (relevantCompanyCollateral.length > 0) {
+    // Extract who_we_are content
+    const whoWeAre = relevantCompanyCollateral.find(item => item.type === 'who_we_are');
+    if (whoWeAre) {
+      companyInfo = whoWeAre.content.substring(0, 150);
+    }
+    
+    // Extract benefits content
+    const benefits = relevantCompanyCollateral.find(item => item.type === 'benefits');
+    if (benefits) {
+      companyBenefits = benefits.content.substring(0, 150);
+    }
+    
+    // Extract mission statements
+    const mission = relevantCompanyCollateral.find(item => item.type === 'mission_statements');
+    if (mission) {
+      companyMission = mission.content.substring(0, 150);
+    }
+    
+    // Extract links
+    const talentLink = relevantCompanyCollateral.find(item => item.type === 'talent_community_link');
+    if (talentLink) {
+      talentCommunityLink = talentLink.content;
+    }
+    
+    const careerLink = relevantCompanyCollateral.find(item => item.type === 'career_site_link');
+    if (careerLink) {
+      careerSiteLink = careerLink.content;
+    }
+  }
+
+  // Create email content based on length preference and incorporate company collateral
   const createEmailContent = (index: number, title: string): string => {
+    // Base content with company information if available
+    let companyContent = '';
+    let callToAction = '';
+    
+    // Add company information based on email index
+    if (index === 0 && companyInfo) {
+      companyContent = `\n\n${companyInfo}`;
+    } else if (index === 1 && companyMission) {
+      companyContent = `\n\n${companyMission}`;
+    } else if (index === 2 && companyBenefits) {
+      companyContent = `\n\nOur benefits include: ${companyBenefits}`;
+    }
+    
+    // Add call to action with links if available
+    if (talentCommunityLink && index === example.sequenceAndExamples.steps - 1) {
+      callToAction = `\n\nJoin our talent community to stay updated on future opportunities: ${talentCommunityLink}`;
+    } else if (careerSiteLink) {
+      callToAction = `\n\nLearn more about opportunities at ${draft.companyName}: ${careerSiteLink}`;
+    }
+    
+    // Trim content based on email length
     const baseContent = `Hi {{First Name}},
 
 I hope this message finds you well. ${title} at {{Company Name}}.
 
-${draft.additionalContext || 'We have exciting opportunities that align with your background and career goals.'}
+${draft.additionalContext || 'We have exciting opportunities that align with your background and career goals.'}${companyContent}${callToAction}
 
 Best regards,
 ${draft.recruiterName}`;
@@ -599,7 +698,7 @@ ${draft.recruiterName}`;
     if (draft.emailLength === 'short') {
       return `Hi {{First Name}},
 
-${title} at {{Company Name}}. ${draft.additionalContext ? draft.additionalContext.split('.')[0] + '.' : 'We have exciting opportunities for you.'}
+${title} at {{Company Name}}. ${draft.additionalContext ? draft.additionalContext.split('.')[0] + '.' : 'We have exciting opportunities for you.'}${callToAction ? '\n\n' + callToAction.split('.')[0] + '.' : ''}
 
 Best regards,
 ${draft.recruiterName}`;
@@ -608,7 +707,7 @@ ${draft.recruiterName}`;
 
 I hope this message finds you well. ${title} at {{Company Name}}.
 
-${draft.additionalContext || 'We have exciting opportunities that align with your background and career goals.'} I believe your experience at {{Current Company}} makes you an excellent fit for our team.
+${draft.additionalContext || 'We have exciting opportunities that align with your background and career goals.'} I believe your experience at {{Current Company}} makes you an excellent fit for our team.${companyContent.substring(0, 200)}${callToAction}
 
 I'd love to discuss how your skills and expertise could contribute to our organization. Would you be available for a brief conversation this week?
 
@@ -619,9 +718,9 @@ ${draft.recruiterName}`;
 
 I hope this message finds you well. ${title} at {{Company Name}}.
 
-${draft.additionalContext || 'We have exciting opportunities that align with your background and career goals.'} I've been particularly impressed by your experience at {{Current Company}} and believe you would be a valuable addition to our team.
+${draft.additionalContext || 'We have exciting opportunities that align with your background and career goals.'} I've been particularly impressed by your experience at {{Current Company}} and believe you would be a valuable addition to our team.${companyContent}
 
-Our organization offers competitive compensation, comprehensive benefits, and a supportive work environment focused on professional growth and development. We're currently expanding our team and looking for talented professionals like yourself.
+Our organization offers competitive compensation, comprehensive benefits, and a supportive work environment focused on professional growth and development. We're currently expanding our team and looking for talented professionals like yourself.${callToAction}
 
 I'd love to schedule a time to discuss these opportunities in more detail and answer any questions you might have. Would you be available for a brief conversation this week?
 

@@ -1,5 +1,6 @@
 import OpenAI from 'openai';
 import { getAIModelForTask, getPromptForTask } from '../config/ai';
+import { CompanyCollateral } from '../lib/supabase';
 
 // Initialize OpenAI client
 const openai = new OpenAI({
@@ -48,9 +49,13 @@ export interface EmailStep {
   delayUnit: 'immediately' | 'business days';
 }
 
-export async function generateCampaignSequence(prompt: CampaignPrompt): Promise<EmailStep[]> {
+export async function generateCampaignSequence(
+  prompt: CampaignPrompt,
+  relevantCompanyCollateral: CompanyCollateral[] = []
+): Promise<EmailStep[]> {
   console.log('📧 Starting campaign sequence generation...');
   console.log('📊 Campaign Parameters:', prompt);
+  console.log('📚 Using relevant company collateral:', relevantCompanyCollateral.length, 'items');
 
   // Get AI configuration for campaign generation
   const modelConfig = getAIModelForTask('campaignGeneration');
@@ -66,6 +71,29 @@ export async function generateCampaignSequence(prompt: CampaignPrompt): Promise<
 
   const lengthSpec = emailLengthSpecs[prompt.emailLength || 'concise'];
 
+  // Format company collateral for the prompt
+  let collateralSection = '';
+  if (relevantCompanyCollateral.length > 0) {
+    collateralSection = `COMPANY KNOWLEDGE BASE (COLLATERAL):
+The following company collateral should be integrated into the campaign emails:
+
+${relevantCompanyCollateral.map((item, index) => {
+  return `${index + 1}. Type: ${item.type}
+   Content: ${item.content.substring(0, 300)}${item.content.length > 300 ? '...' : ''}
+   Links: ${item.links.join(', ') || 'None'}`;
+}).join('\n\n')}
+
+COLLATERAL USAGE INSTRUCTIONS:
+- For 'who_we_are', 'mission_statements', 'benefits', 'dei_statements', and 'newsletters': Integrate this content directly into the email body
+- For 'talent_community_link', 'career_site_link', and 'company_logo': Use as links in calls to action
+- Prioritize relevant collateral for each email step based on the email's purpose
+- Maintain the specified tone and length while incorporating collateral
+- Use collateral to enhance personalization and authenticity
+`;
+  } else {
+    collateralSection = 'COMPANY KNOWLEDGE BASE (COLLATERAL):\nNo company collateral available for this campaign.\n';
+  }
+
   const systemPrompt = `${promptConfig.system}
 
 Campaign Type: ${prompt.campaignType}
@@ -78,6 +106,8 @@ Tone: ${prompt.tone}
 EMAIL LENGTH REQUIREMENTS:
 - Target length: ${lengthSpec.range} (${lengthSpec.description})
 - CRITICAL: Each email must be approximately ${lengthSpec.range}. This is a strict requirement.
+
+${collateralSection}
 
 Content Sources:
 ${prompt.contentSources.join('\n')}
@@ -98,7 +128,7 @@ ${prompt.aiInstructions}`;
         },
         {
           role: "user",
-          content: `Generate the email sequence based on the provided parameters. CRITICAL: Each email must be ${lengthSpec.range} in length with a ${prompt.tone} tone.`
+          content: `Generate the email sequence based on the provided parameters. CRITICAL: Each email must be ${lengthSpec.range} in length with a ${prompt.tone} tone. Integrate company collateral naturally into the emails where appropriate.`
         }
       ],
       temperature: modelConfig.temperature,
@@ -120,7 +150,8 @@ ${prompt.aiInstructions}`;
         max_tokens: modelConfig.maxTokens,
         usage: completion.usage,
         campaignType: prompt.campaignType,
-        emailLength: prompt.emailLength || 'concise'
+        emailLength: prompt.emailLength || 'concise',
+        collateralCount: relevantCompanyCollateral.length
       }
     );
 
@@ -166,38 +197,93 @@ ${prompt.aiInstructions}`;
     
     const lengthSpec = emailLengthSpecs[prompt.emailLength || 'concise'];
     
-    // Create email content based on length preference
+    // Create email content based on length preference and incorporate company collateral
     const createEmailContent = (index: number, title: string): string => {
+      // Extract company information from collateral
+      let companyInfo = '';
+      let companyBenefits = '';
+      let companyMission = '';
+      let talentCommunityLink = '';
+      let careerSiteLink = '';
+      
+      if (relevantCompanyCollateral.length > 0) {
+        // Extract who_we_are content
+        const whoWeAre = relevantCompanyCollateral.find(item => item.type === 'who_we_are');
+        if (whoWeAre) {
+          companyInfo = whoWeAre.content.substring(0, 150);
+        }
+        
+        // Extract benefits content
+        const benefits = relevantCompanyCollateral.find(item => item.type === 'benefits');
+        if (benefits) {
+          companyBenefits = benefits.content.substring(0, 150);
+        }
+        
+        // Extract mission statements
+        const mission = relevantCompanyCollateral.find(item => item.type === 'mission_statements');
+        if (mission) {
+          companyMission = mission.content.substring(0, 150);
+        }
+        
+        // Extract links
+        const talentLink = relevantCompanyCollateral.find(item => item.type === 'talent_community_link');
+        if (talentLink) {
+          talentCommunityLink = talentLink.content;
+        }
+        
+        const careerLink = relevantCompanyCollateral.find(item => item.type === 'career_site_link');
+        if (careerLink) {
+          careerSiteLink = careerLink.content;
+        }
+      }
+      
+      // Add company information based on email index
+      let companyContent = '';
+      let callToAction = '';
+      
+      if (index === 0 && companyInfo) {
+        companyContent = `\n\n${companyInfo}`;
+      } else if (index === 1 && companyMission) {
+        companyContent = `\n\n${companyMission}`;
+      } else if (index === 2 && companyBenefits) {
+        companyContent = `\n\nOur benefits include: ${companyBenefits}`;
+      }
+      
+      // Add call to action with links if available
+      if (talentCommunityLink && index === 2) {
+        callToAction = `\n\nJoin our talent community to stay updated on future opportunities: ${talentCommunityLink}`;
+      } else if (careerSiteLink) {
+        callToAction = `\n\nLearn more about opportunities at ${prompt.companyName}: ${careerSiteLink}`;
+      }
+      
       if (prompt.emailLength === 'short') {
         return `Hi {{First Name}},
 
-I came across your profile and was impressed by your experience. We have exciting opportunities at {{Company Name}} that might interest you.
-
-Would you be open to a brief conversation?
+${title} at {{Company Name}}. ${prompt.aiInstructions ? prompt.aiInstructions.split('.')[0] + '.' : 'We have exciting opportunities for you.'}${callToAction ? '\n\n' + callToAction.split('.')[0] + '.' : ''}
 
 Best regards,
 ${prompt.recruiterName}`;
       } else if (prompt.emailLength === 'medium') {
         return `Hi {{First Name}},
 
-I hope this message finds you well. I came across your profile and was impressed by your experience in healthcare.
+I hope this message finds you well. ${title} at {{Company Name}}.
 
-We have some exciting opportunities at {{Company Name}} that I think would be a great fit for your background and career goals. Your experience at {{Current Company}} seems particularly relevant.
+${prompt.aiInstructions || 'We have exciting opportunities that align with your background and career goals.'} I believe your experience at {{Current Company}} makes you an excellent fit for our team.${companyContent.substring(0, 200)}${callToAction}
 
-Would you be open to a brief conversation about these opportunities? I'd be happy to share more details.
+I'd love to discuss how your skills and expertise could contribute to our organization. Would you be available for a brief conversation this week?
 
 Best regards,
 ${prompt.recruiterName}`;
       } else if (prompt.emailLength === 'long') {
         return `Hi {{First Name}},
 
-I hope this message finds you well. I came across your profile and was particularly impressed by your experience and background in healthcare.
+I hope this message finds you well. ${title} at {{Company Name}}.
 
-We have some exciting opportunities at {{Company Name}} that I think would be a great fit for your skills and career goals. Your experience at {{Current Company}} seems particularly relevant to what we're looking for, and I believe you could make a significant impact on our team.
+${prompt.aiInstructions || 'We have exciting opportunities that align with your background and career goals.'} I've been particularly impressed by your experience at {{Current Company}} and believe you would be a valuable addition to our team.${companyContent}
 
-Our organization offers competitive compensation, comprehensive benefits, and a supportive work environment focused on professional growth and development. We're currently expanding our team and looking for talented professionals like yourself.
+Our organization offers competitive compensation, comprehensive benefits, and a supportive work environment focused on professional growth and development. We're currently expanding our team and looking for talented professionals like yourself.${callToAction}
 
-Would you be open to a brief conversation about these opportunities? I'd be happy to share more details and answer any questions you might have.
+I'd love to schedule a time to discuss these opportunities in more detail and answer any questions you might have. Would you be available for a brief conversation this week?
 
 Best regards,
 ${prompt.recruiterName}`;
@@ -205,11 +291,11 @@ ${prompt.recruiterName}`;
         // Default to concise (60-80 words)
         return `Hi {{First Name}},
 
-I hope this message finds you well. I came across your profile and was impressed by your experience in healthcare.
+I hope this message finds you well. ${title} at {{Company Name}}.
 
-We have some exciting opportunities at {{Company Name}} that I think would be a great fit for your background and career goals.
+${prompt.aiInstructions || 'We have exciting opportunities that align with your background and career goals.'}${companyContent.substring(0, 100)}
 
-Would you be open to a brief conversation about these opportunities?
+Would you be open to a brief conversation about these opportunities?${callToAction ? '\n\n' + callToAction : ''}
 
 Best regards,
 ${prompt.recruiterName}`;

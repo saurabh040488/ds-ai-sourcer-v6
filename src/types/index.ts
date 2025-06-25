@@ -123,6 +123,9 @@ export interface AssistantMessage {
   campaignDraft?: Partial<CampaignDraft>;
 }
 
+// Import CompanyCollateral type
+import { CompanyCollateral } from '../lib/supabase';
+
 export interface CampaignDraft {
   goal: string;
   type: 'nurture' | 'enrichment' | 'keep-warm' | 'reengage' | 'nurture-reengage';
@@ -139,4 +142,5 @@ export interface CampaignDraft {
     examples: string[];
   };
   matchedExampleId?: string; // ID of the matched CampaignExample
+  relevantCompanyCollateral?: CompanyCollateral[]; // Actual collateral data relevant to the campaign
 }

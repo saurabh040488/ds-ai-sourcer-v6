@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useContext } from 'react';
-import { ArrowLeft, Send, Loader2, Sparkles, MessageSquare, User, Bot, Lightbulb, Target, Users, Palette, FileText, CheckCircle, Search } from 'lucide-react';
+import { ArrowLeft, Send, Loader2, Sparkles, MessageSquare, User, Bot, Lightbulb, Target, Users, Palette, FileText, CheckCircle, Search, Building, ChevronDown } from 'lucide-react';
 import { AuthContext } from '../AuthWrapper';
-import { Project } from '../../lib/supabase';
+import { Project, getCompanyProfiles, getCompanyCollateral, CompanyProfile, CompanyCollateral } from '../../lib/supabase';
 import { AssistantMessage, CampaignDraft } from '../../types';
 import { processUserInput, generateCampaignFromDraft } from '../../utils/campaignAssistantAI';
 import { findCampaignExampleById } from '../../data/campaignExamples';
@@ -32,8 +32,31 @@ const CampaignAssistant: React.FC<CampaignAssistantProps> = ({
   });
   const [currentStep, setCurrentStep] = useState<'goal' | 'audience' | 'tone' | 'context' | 'review' | 'generate'>('goal');
   
+  // Company branding state
+  const [companyProfiles, setCompanyProfiles] = useState<CompanyProfile[]>([]);
+  const [selectedCompanyProfileId, setSelectedCompanyProfileId] = useState<string | null>(null);
+  const [allCompanyCollateral, setAllCompanyCollateral] = useState<CompanyCollateral[]>([]);
+  const [loadingCompanyData, setLoadingCompanyData] = useState(false);
+  const [showCompanySelector, setShowCompanySelector] = useState(false);
+  
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Load company profiles on mount
+  useEffect(() => {
+    if (user && currentProject) {
+      loadCompanyProfiles();
+    }
+  }, [user, currentProject]);
+
+  // Load company collateral when profile changes
+  useEffect(() => {
+    if (selectedCompanyProfileId) {
+      loadCompanyCollateral();
+    } else {
+      setAllCompanyCollateral([]);
+    }
+  }, [selectedCompanyProfileId]);
 
   // Initialize conversation
   useEffect(() => {
@@ -67,9 +90,79 @@ What's the main goal for your campaign?`,
     }
   }, [isProcessing, isGenerating]);
 
+  const loadCompanyProfiles = async () => {
+    if (!user) return;
+
+    console.log('🏢 Loading company profiles for campaign assistant...');
+    setLoadingCompanyData(true);
+
+    try {
+      const { data, error } = await getCompanyProfiles(user.id);
+      
+      if (error) {
+        console.error('❌ Error loading company profiles:', error);
+        return;
+      }
+
+      console.log('✅ Company profiles loaded:', data?.length || 0);
+      setCompanyProfiles(data || []);
+      
+      // Auto-select first profile if available
+      if (data && data.length > 0 && !selectedCompanyProfileId) {
+        setSelectedCompanyProfileId(data[0].id);
+        // Update campaign draft with company name
+        setCampaignDraft(prev => ({
+          ...prev,
+          companyName: data[0].company_name
+        }));
+      }
+    } catch (error) {
+      console.error('❌ Error in loadCompanyProfiles:', error);
+    } finally {
+      setLoadingCompanyData(false);
+    }
+  };
+
+  const loadCompanyCollateral = async () => {
+    if (!selectedCompanyProfileId) return;
+
+    console.log('📚 Loading company collateral for profile:', selectedCompanyProfileId);
+    setLoadingCompanyData(true);
+
+    try {
+      const { data, error } = await getCompanyCollateral(selectedCompanyProfileId);
+      
+      if (error) {
+        console.error('❌ Error loading company collateral:', error);
+        return;
+      }
+
+      console.log('✅ Company collateral loaded:', data?.length || 0);
+      setAllCompanyCollateral(data || []);
+    } catch (error) {
+      console.error('❌ Error in loadCompanyCollateral:', error);
+    } finally {
+      setLoadingCompanyData(false);
+    }
+  };
+
+  const handleCompanyProfileChange = (profileId: string) => {
+    setSelectedCompanyProfileId(profileId);
+    const selectedProfile = companyProfiles.find(p => p.id === profileId);
+    if (selectedProfile) {
+      setCampaignDraft(prev => ({
+        ...prev,
+        companyName: selectedProfile.company_name
+      }));
+    }
+    setShowCompanySelector(false);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!inputValue.trim() || isProcessing || isGenerating) return;
+    if (!inputValue.trim() || isProcessing) return;
+
+    console.log('🚀 Starting search process for query:', inputValue);
 
     const userMessage: AssistantMessage = {
       id: Date.now().toString(),
@@ -79,23 +172,41 @@ What's the main goal for your campaign?`,
     };
 
     setMessages(prev => [...prev, userMessage]);
-    setInputValue('');
     setIsProcessing(true);
+    
+    // Add processing message with animated progress
+    const processingMessage: AssistantMessage = {
+      id: (Date.now() + 1).toString(),
+      type: 'assistant',
+      content: 'Analyzing your query with AI to extract search criteria...',
+      timestamp: new Date(),
+      isProcessing: true,
+      searchProgress: {
+        stage: 'extraction',
+        current: 1,
+        total: 3,
+        message: 'Extracting entities from your query...'
+      }
+    };
+    setMessages(prev => [...prev, processingMessage]);
 
     try {
-      console.log('🤖 Processing user input:', inputValue);
+      console.log('🔍 Starting AI entity extraction...');
       
       const response = await processUserInput(inputValue, messages, campaignDraft, recentSearches);
       
+      // Remove processing message and add filter extraction result
+      setMessages(prev => prev.filter(msg => !msg.isProcessing));
+      
       const assistantMessage: AssistantMessage = {
-        id: (Date.now() + 1).toString(),
+        id: (Date.now() + 2).toString(),
         type: 'assistant',
         content: response.message,
         timestamp: new Date(),
         suggestions: response.suggestions,
         campaignDraft: response.campaignDraft
       };
-
+      
       setMessages(prev => [...prev, assistantMessage]);
       
       // Update campaign draft
@@ -118,6 +229,9 @@ What's the main goal for your campaign?`,
     } catch (error) {
       console.error('❌ Error processing input:', error);
       
+      // Remove processing message and show error
+      setMessages(prev => prev.filter(msg => !msg.isProcessing));
+      
       const errorMessage: AssistantMessage = {
         id: (Date.now() + 2).toString(),
         type: 'assistant',
@@ -129,6 +243,7 @@ What's the main goal for your campaign?`,
       setMessages(prev => [...prev, errorMessage]);
     } finally {
       setIsProcessing(false);
+      setInputValue('');
     }
   };
 
@@ -152,7 +267,49 @@ What's the main goal for your campaign?`,
     setMessages(prev => [...prev, generatingMessage]);
 
     try {
-      const { campaignData, emailSteps } = await generateCampaignFromDraft(finalDraft);
+      // Filter company collateral based on campaign example
+      let relevantCompanyCollateral: CompanyCollateral[] = [];
+      
+      if (finalDraft.matchedExampleId && allCompanyCollateral.length > 0) {
+        const matchedExample = findCampaignExampleById(finalDraft.matchedExampleId);
+        
+        if (matchedExample) {
+          console.log('🔍 Filtering collateral based on campaign example:', matchedExample.collateralToUse);
+          
+          // Filter collateral based on collateralToUse from the matched example
+          relevantCompanyCollateral = allCompanyCollateral.filter(collateral => {
+            // Map collateral types to example collateral names
+            const collateralMapping: Record<string, string[]> = {
+              'newsletters': ['Newsletters', 'Newsletter'],
+              'benefits': ['Benefits', 'Employee Benefits'],
+              'who_we_are': ['Who we are', 'About Us', 'Company Overview'],
+              'mission_statements': ['Mission statements', 'Mission', 'Values', 'Vision'],
+              'dei_statements': ['DEI statements', 'Diversity', 'Inclusion'],
+              'talent_community_link': ['Talent community link', 'Community'],
+              'career_site_link': ['Career site link', 'Careers'],
+              'company_logo': ['Company logo', 'Logo']
+            };
+            
+            const mappedNames = collateralMapping[collateral.type] || [collateral.type];
+            return matchedExample.collateralToUse.some(exampleCollateral => 
+              mappedNames.some(mappedName => 
+                exampleCollateral.toLowerCase().includes(mappedName.toLowerCase()) ||
+                mappedName.toLowerCase().includes(exampleCollateral.toLowerCase())
+              )
+            );
+          });
+          
+          console.log('✅ Filtered collateral:', relevantCompanyCollateral.length, 'items');
+        }
+      }
+      
+      // Add relevant collateral to the final draft
+      const draftWithCollateral = {
+        ...finalDraft,
+        relevantCompanyCollateral
+      };
+      
+      const { campaignData, emailSteps } = await generateCampaignFromDraft(draftWithCollateral, relevantCompanyCollateral);
       
       console.log('✅ Campaign generated successfully');
       
@@ -160,6 +317,8 @@ What's the main goal for your campaign?`,
         id: (Date.now() + 1).toString(),
         type: 'assistant',
         content: `🎉 Your campaign "${campaignData.name}" has been generated successfully! It includes ${emailSteps.length} email steps designed to ${(finalDraft.goal || 'achieve your campaign objectives').toLowerCase()}. 
+
+${relevantCompanyCollateral.length > 0 ? `I've incorporated ${relevantCompanyCollateral.length} pieces of company collateral from your knowledge base to make the campaign more personalized and effective.` : ''}
 
 You'll now be taken to the campaign editor where you can review and customize each email before launching.`,
         timestamp: new Date()
@@ -214,6 +373,7 @@ You'll now be taken to the campaign editor where you can review and customize ea
 
   const progressSteps = ['goal', 'audience', 'tone', 'context', 'review'];
   const currentStepIndex = progressSteps.indexOf(currentStep);
+  const selectedProfile = companyProfiles.find(p => p.id === selectedCompanyProfileId);
 
   return (
     <div className="flex-1 flex flex-col bg-gray-50 h-screen">
@@ -240,7 +400,54 @@ You'll now be taken to the campaign editor where you can review and customize ea
             </div>
           </div>
           
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
+            {/* Company Profile Selector */}
+            {companyProfiles.length > 0 && (
+              <div className="relative">
+                <button
+                  onClick={() => setShowCompanySelector(!showCompanySelector)}
+                  className="flex items-center gap-2 px-3 py-2 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors text-sm font-medium"
+                  disabled={loadingCompanyData}
+                >
+                  <Building className="w-4 h-4" />
+                  {selectedProfile ? selectedProfile.company_name : 'Select Company'}
+                  <ChevronDown className="w-4 h-4" />
+                </button>
+                
+                {showCompanySelector && (
+                  <div className="absolute top-full right-0 mt-1 w-64 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
+                    <div className="p-3 border-b border-gray-100">
+                      <h4 className="text-sm font-medium text-gray-900">Company Knowledge Base</h4>
+                      <p className="text-xs text-gray-600 mt-1">Select company for branding & collateral</p>
+                    </div>
+                    <div className="max-h-48 overflow-y-auto">
+                      {companyProfiles.map((profile) => (
+                        <button
+                          key={profile.id}
+                          onClick={() => handleCompanyProfileChange(profile.id)}
+                          className={`w-full flex items-start gap-3 px-3 py-3 hover:bg-gray-50 transition-colors text-left ${
+                            selectedCompanyProfileId === profile.id ? 'bg-blue-50 border-r-2 border-blue-500' : ''
+                          }`}
+                        >
+                          <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center flex-shrink-0">
+                            <Building className="w-4 h-4 text-white" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h5 className="text-sm font-medium text-gray-900 truncate">
+                              {profile.company_name}
+                            </h5>
+                            <p className="text-xs text-gray-600 truncate">
+                              {profile.industry} • {profile.size}
+                            </p>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+            
             <span className="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-xs font-medium">
               Beta
             </span>
@@ -248,6 +455,12 @@ You'll now be taken to the campaign editor where you can review and customize ea
               <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium flex items-center gap-1">
                 <Search className="w-3 h-3" />
                 {recentSearches.length} Recent Searches
+              </span>
+            )}
+            {allCompanyCollateral.length > 0 && (
+              <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium flex items-center gap-1">
+                <FileText className="w-3 h-3" />
+                {allCompanyCollateral.length} Collateral Items
               </span>
             )}
           </div>
@@ -308,16 +521,20 @@ You'll now be taken to the campaign editor where you can review and customize ea
                   </div>
                 ) : (
                   <div className="w-8 h-8 bg-gradient-to-br from-purple-600 to-blue-600 rounded-full flex items-center justify-center">
-                    <Bot className="w-5 h-5 text-white" />
+                    {message.isProcessing ? (
+                      <Loader2 className="w-5 h-5 text-white animate-spin" />
+                    ) : (
+                      <Bot className="w-5 h-5 text-white" />
+                    )}
                   </div>
                 )}
               </div>
               
               <div className="flex-1">
-                <div className={`rounded-2xl p-4 ${
+                <div className={`rounded-2xl p-6 shadow-sm border border-gray-100 ${
                   message.type === 'user' 
                     ? 'bg-blue-100 text-blue-900 ml-8' 
-                    : 'bg-white border border-gray-200 shadow-sm'
+                    : 'bg-white'
                 }`}>
                   <p className="text-gray-800 leading-relaxed whitespace-pre-wrap">
                     {message.content}
@@ -496,6 +713,7 @@ You'll now be taken to the campaign editor where you can review and customize ea
             <p className="text-xs text-gray-500 mt-2 text-center">
               AI Assistant will help you create a personalized campaign based on proven templates
               {recentSearches.length > 0 && ` • Using insights from your ${recentSearches.length} recent searches`}
+              {allCompanyCollateral.length > 0 && ` • Using ${allCompanyCollateral.length} company collateral items`}
             </p>
           </div>
         </div>

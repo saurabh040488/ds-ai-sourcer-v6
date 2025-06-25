@@ -151,6 +151,15 @@ EMAIL LENGTH REQUIREMENTS:
   - **Formal**: Use precise, sophisticated language, start with 'Dear {{First Name}}' or 'To {{First Name}},', end with 'Yours sincerely, {{Recruiter Name}}.' Avoid contractions, use a respectful, distant voice, and structured paragraphs.
 - CRITICAL: Each email must be approximately {lengthSpec.range} words, structured for readability with short paragraphs or bullet points. This is a strict requirement.
 
+COMPANY KNOWLEDGE BASE (COLLATERAL):
+The following company collateral should be integrated into the campaign emails:
+- For 'who_we_are', 'mission_statements', 'benefits', 'dei_statements', and 'newsletters': Use the content directly in the email body
+- For 'talent_community_link', 'career_site_link', and 'company_logo': Use as links in calls to action
+- Prioritize relevant collateral for each email step based on the email's purpose
+- Maintain the specified tone and length while incorporating collateral
+- Use collateral to enhance personalization and authenticity
+- For links, create appropriate call-to-action text (e.g., "Join our talent community" for talent_community_link)
+
 IMPORTANT: The campaign example structure above is a GUIDELINE and HINT for sequencing your campaign, not a strict template. Use it to understand the flow and approach, but create content that matches the specific draft requirements.
 
 ADDITIONAL CONTEXT USAGE:
@@ -158,8 +167,6 @@ ADDITIONAL CONTEXT USAGE:
 - Use this content exactly as provided without modification, summarization, or interpretation
 - This content should inform and shape the email sequence while maintaining consistency with the source material's tone, style, and messaging
 - Integrate this content naturally into the emails while preserving its original details and nuances
-
-Generate emails that follow the example structure but are personalized for the specific draft requirements.
 
 RESPONSE FORMAT:
 Return a JSON object with:
