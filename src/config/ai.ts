@@ -192,14 +192,15 @@ IMPORTANT:
 - Create {steps} email steps over {duration} days, with delays in business days (first email delay: 0, immediately; subsequent delays based on progression).
 - Use the example progression as a hint: {examples}
 - Include personalization tokens: {{First Name}}, {{Company Name}}, {{Current Company}}
-- Each email must have a clear call to action (CTA), creating urgency (e.g., "Update your profile now"), with the candidate portal link included.
 - First email should have delay: 0 and delayUnit: "immediately"
 - Subsequent emails should have appropriate delays in "business days"
 - Strictly adhere to the specified email length of {lengthSpec.range}
 - Incorporate the specified tone and target audience
 - Use the guideline structure but adapt content to the specific draft
-- Incorporate the additionalContext content verbatim where appropriate
-- Structure content for readability: Use short paragraphs (2-3 sentences max) or bullet points for lists, ensuring the specified tone influences both language and writing style (e.g., conversational for friendly, formal for professional).
+- Incorporate the additionalContext content verbatim where appropriate.
+- CRITICALLY IMPORTANT : Each email must have a clear call to action (CTA).
+- CRITICALLY IMPORTANT : Structure content for readability: Use short paragraphs (2-3 sentences max) or bullet points for lists.
+- CRITICALLY IMPORTANT : Ensure the specified tone : {tone} influences both language and writing style.
 - Incorporate company knowledge base data and additionalContext verbatim where appropriate, aligning with the tone and goal.`
   },
 
