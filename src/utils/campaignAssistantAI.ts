@@ -88,6 +88,15 @@ TONE STEP SPECIFIC INSTRUCTIONS:
 - Email length options: 'short' (30-50 words), 'concise' (60-80 words), 'medium' (100-120 words), 'long' (150+ words)
 - Accept tone input in various formats and automatically include default email length
 
+ADDITIONAL CONTEXT STEP SPECIFIC INSTRUCTIONS:
+- CRITICAL: When in the 'context' step, the user's input for additional context MUST be taken exactly as provided
+- DO NOT summarize, interpret, modify, or paraphrase the user's additional context input
+- The additionalContext field in the campaignDraft MUST contain the verbatim content from the user's input
+- This content should be preserved exactly as written, including all original details, nuances, formatting, and messaging
+- The user may provide blog posts, newsletters, company mission statements, product descriptions, case studies, press releases, marketing materials, or other content that must be used verbatim
+- Your role is to accept this content as-is and pass it through unchanged to maintain authenticity and ensure all original details are preserved
+- Do NOT provide any interpretation or summary of what the content contains - simply acknowledge receipt and move to the next step
+
 RESPONSE FORMAT:
 Always respond with a JSON object containing:
 {
@@ -98,6 +107,7 @@ Always respond with a JSON object containing:
     "matchedExampleId": "id-of-best-matching-example",
     "type": "campaign-type-from-matched-example",
     "emailLength": "short|concise|medium|long",
+    "additionalContext": "VERBATIM user input when in context step - NO MODIFICATIONS",
     ...other draft fields
   },
   "nextStep": "goal|audience|tone|context|review|generate",
@@ -119,6 +129,7 @@ GUIDELINES:
 - CRITICAL: For audience step, put specific target audience options in suggestions array, not in message text
 - CRITICAL: Accept any target audience input from the user and proceed to the next step without asking for clarification
 - CRITICAL: For tone step, include email length preference collection
+- CRITICAL: For context step, preserve user input EXACTLY as provided in additionalContext field without any modifications
 
 Current conversation context: The user is ${getConversationStage(currentDraft)}`;
 
@@ -136,7 +147,7 @@ ${conversationContext}
 
 User input: "${userInput}"
 
-Please process this input, classify against available campaign examples, and provide the next step in the campaign creation process. Include matchedExampleId in the campaignDraft when a goal is identified, and automatically transition to 'audience' step when goal is set. For audience step, put specific target audience options in suggestions array. For tone step, include email length collection. CRITICAL: Accept any target audience input and proceed to next step.`;
+Please process this input, classify against available campaign examples, and provide the next step in the campaign creation process. Include matchedExampleId in the campaignDraft when a goal is identified, and automatically transition to 'audience' step when goal is set. For audience step, put specific target audience options in suggestions array. For tone step, include email length collection. CRITICAL: Accept any target audience input and proceed to next step. CRITICAL: For context step, preserve user input EXACTLY as provided in additionalContext field.`;
 
   try {
     console.log('📤 Sending request to OpenAI...');
@@ -273,6 +284,21 @@ Please process this input, classify against available campaign examples, and pro
       }
     }
 
+    // CRITICAL: Handle additional context input - preserve verbatim
+    if (currentDraft.targetAudience && currentDraft.tone && !currentDraft.additionalContext && userInput.trim().length > 10) {
+      console.log('📝 Detected additional context input, preserving verbatim and proceeding to review step');
+      
+      // Store the user input EXACTLY as provided without any modifications
+      result.campaignDraft.additionalContext = userInput;
+      result.nextStep = 'review';
+      result.message = `Perfect! I've captured your additional context exactly as provided. Your campaign is now ready for generation. Let me review the details with you before we proceed.`;
+      result.suggestions = [
+        "Generate the campaign now",
+        "Let me review the details first",
+        "I want to make some changes"
+      ];
+    }
+
     console.log('✅ Processed AI response:', result);
     return result;
 
@@ -336,6 +362,12 @@ IMPORTANT: The campaign example structure above is a GUIDELINE and HINT for sequ
 
 Generate emails that follow the example structure but are personalized for the specific draft requirements.
 
+ADDITIONAL CONTEXT USAGE:
+- The additionalContext field contains verbatim content that MUST be incorporated directly into the campaign
+- Use this content exactly as provided without modification, summarization, or interpretation
+- This content should inform and shape the email sequence while maintaining consistency with the source material's tone, style, and messaging
+- Integrate this content naturally into the emails while preserving its original details and nuances
+
 RESPONSE FORMAT:
 Return a JSON object with:
 {
@@ -371,13 +403,15 @@ IMPORTANT:
 - Make content professional and engaging
 - Strictly adhere to the specified email length of ${lengthSpec.range}
 - Incorporate the specified tone and target audience
-- Use the guideline structure but adapt content to the specific draft`;
+- Use the guideline structure but adapt content to the specific draft
+- Incorporate the additionalContext content verbatim where appropriate`;
 
   const userPrompt = `Campaign Draft:
 ${JSON.stringify(draft, null, 2)}
 
 Generate the complete campaign with email sequence using the guideline structure.
-CRITICAL: Each email must be ${lengthSpec.range} in length with a ${draft.tone || 'professional'} tone.`;
+CRITICAL: Each email must be ${lengthSpec.range} in length with a ${draft.tone || 'professional'} tone.
+CRITICAL: Use the additionalContext content exactly as provided without any modifications.`;
 
   try {
     console.log('📤 Sending campaign generation request...');
