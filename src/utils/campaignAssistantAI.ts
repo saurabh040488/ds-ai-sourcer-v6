@@ -467,11 +467,11 @@ export async function generateCampaignFromDraft(
 
   const lengthSpec = emailLengthSpecs[draft.emailLength || 'concise'];
 
-  // Format company collateral for the prompt - more concise version
+  // Format company collateral for the prompt
   const formattedCollateral = relevantCompanyCollateral.map(item => {
     return {
       type: item.type,
-      content: item.content.substring(0, 150) + (item.content.length > 150 ? '...' : ''),
+      content: item.content.substring(0, 300) + (item.content.length > 300 ? '...' : ''),
       links: item.links
     };
   });
@@ -517,7 +517,7 @@ Each email content should follow this simple structure:
 \`\`\`html
 <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif; line-height: 1.6;">
   <tr>
-    <td style="padding: 20px; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px;">
+    <td style="padding: 20px;">
       <h2 style="color: #333; font-size: 20px; margin: 0 0 15px 0;">Hello {{First Name}},</h2>
       
       <p style="color: #555; font-size: 16px; margin: 0 0 15px 0;">
@@ -566,12 +566,14 @@ Return a JSON object with:
 }
 
 IMPORTANT:
+- Create ${matchingExample.sequenceAndExamples.steps} email steps
+- Use the example progression as a hint: ${matchingExample.sequenceAndExamples.examples.join(' → ')}
 - Include personalization tokens: {{First Name}}, {{Company Name}}, {{Current Company}}
 - First email should have delay: 0 and delayUnit: "immediately"
 - Subsequent emails should have appropriate delays in "business days"
 - Strictly adhere to the specified email length of ${lengthSpec.range} READABLE WORDS (excluding HTML markup)
 - Each email must have a clear call to action (CTA) formatted as an HTML link
-- Structure content for readability using proper HTML formatting
+- Structure content for readability using proper HTML formatting with headings, paragraphs, and lists
 - Ensure the specified tone influences both language and writing style`;
 
   const userPrompt = `Campaign Draft:
@@ -865,8 +867,7 @@ function createFallbackCampaign(
       
       <p style="color: #555; font-size: 16px; margin: 15px 0 0 0;">
         Best regards,<br>
-        <strong style="color: #333;">{{Your Name}}</strong><br>
-        {{Company Name}}
+        <strong style="color: #333;">{{Your Name}}</strong>
       </p>
     </td>
   </tr>

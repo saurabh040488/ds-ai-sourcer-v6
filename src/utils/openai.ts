@@ -71,7 +71,7 @@ export async function generateCampaignSequence(
 
   const lengthSpec = emailLengthSpecs[prompt.emailLength || 'concise'];
 
-  // Format company collateral for the prompt - more concise version
+  // Format company collateral for the prompt
   let collateralSection = '';
   if (relevantCompanyCollateral.length > 0) {
     collateralSection = `COMPANY KNOWLEDGE BASE (COLLATERAL):
@@ -79,111 +79,53 @@ The following company collateral should be integrated into the campaign emails:
 
 ${relevantCompanyCollateral.map((item, index) => {
   return `${index + 1}. Type: ${item.type}
-   Content: ${item.content.substring(0, 150)}${item.content.length > 150 ? '...' : ''}
+   Content: ${item.content.substring(0, 300)}${item.content.length > 300 ? '...' : ''}
    Links: ${item.links.join(', ') || 'None'}`;
 }).join('\n\n')}
 
 COLLATERAL USAGE INSTRUCTIONS:
-- For text content: Integrate directly into the email body
-- For links: Use as properly formatted HTML links
-- Prioritize relevant collateral for each email step
+- For 'who_we_are', 'mission_statements', 'benefits', 'dei_statements', and 'newsletters': Integrate this content directly into the email body with proper HTML formatting
+- For 'talent_community_link', 'career_site_link', and 'company_logo': Use as properly formatted HTML links and images
+- Prioritize relevant collateral for each email step based on the email's purpose
+- Maintain the specified tone and length while incorporating collateral
+- Use collateral to enhance personalization and authenticity
 `;
   } else {
     collateralSection = 'COMPANY KNOWLEDGE BASE (COLLATERAL):\nNo company collateral available for this campaign.\n';
   }
 
-  // Prepare the system prompt with HTML email requirements - SIMPLIFIED VERSION
-  const systemPrompt = `You are an expert email campaign generator for healthcare recruitment. Create professional, engaging HTML-formatted email sequences.
+  // Prepare the system prompt with HTML email requirements
+  const systemPrompt = promptConfig.system
+    .replace('{lengthSpec.range}', lengthSpec.range)
+    .replace('{lengthSpec.description}', lengthSpec.description)
+    .replace('{tone}', prompt.tone);
 
-CRITICAL HTML EMAIL REQUIREMENTS:
-1. Generate content in HTML format with proper email-safe markup
-2. Use inline CSS styling for maximum email client compatibility
-3. Include proper text formatting (bold, italic, underline) where appropriate
-4. Create organized bullet points or numbered lists using HTML lists
-5. Generate clickable hyperlinks with proper HTML anchor tags
-6. Use proper paragraph spacing and formatting
-7. Follow email design best practices for deliverability
+  const userPrompt = `Generate the email sequence based on the provided parameters:
 
-CRITICAL WORD COUNT REQUIREMENTS:
-- IMPORTANT: Word count refers to READABLE TEXT ONLY, not HTML markup
-- Count only the words that appear when the email is rendered/displayed to the user
-- HTML tags, CSS styles, and markup do not count toward word limits
-- Target length: ${lengthSpec.range} (${lengthSpec.description}) of READABLE CONTENT
-- Example: "<p>Hello world</p>" counts as 2 words, not 4
-- Tone: ${prompt.tone}
-
-${collateralSection}
-
-CRITICAL HTML EMAIL TEMPLATE STRUCTURE:
-Each email content should follow this simple structure:
-
-\`\`\`html
-<table width="100%" cellpadding="0" cellspacing="0" style="max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif; line-height: 1.6;">
-  <tr>
-    <td style="padding: 20px; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px;">
-      <h2 style="color: #333; font-size: 20px; margin: 0 0 15px 0;">Hello {{First Name}},</h2>
-      
-      <p style="color: #555; font-size: 16px; margin: 0 0 15px 0;">
-        [Main email content here]
-      </p>
-      
-      <p style="color: #555; font-size: 16px; margin: 15px 0;">
-        [Call to action here]
-        <a href="#" style="color: #0066cc; text-decoration: none; font-weight: bold;">Click here</a>
-      </p>
-      
-      <p style="color: #555; font-size: 16px; margin: 15px 0 0 0;">
-        Best regards,<br>
-        <strong style="color: #333;">{{Recruiter Name}}</strong><br>
-        {{Company Name}}
-      </p>
-    </td>
-  </tr>
-</table>
-\`\`\`
-
-RESPONSE FORMAT:
-Return a JSON array of email steps, each with:
-[
-  {
-    "type": "email",
-    "subject": "Email subject with {{First Name}} personalization",
-    "content": "HTML-formatted email content with proper markup, styling, and {{First Name}}, {{Company Name}}, {{Current Company}} tokens",
-    "delay": 0,
-    "delayUnit": "immediately"
-  }
-]
-
-IMPORTANT:
-- Include personalization tokens: {{First Name}}, {{Company Name}}, {{Current Company}}
-- First email should have delay: 0 and delayUnit: "immediately"
-- Subsequent emails should have appropriate delays in "business days"
-- Strictly adhere to the specified email length of ${lengthSpec.range} READABLE WORDS (excluding HTML markup)
-- Each email must have a clear call to action (CTA) formatted as an HTML link
-- Structure content for readability using proper HTML formatting
-- Ensure the specified tone influences both language and writing style`;
-
-  const userPrompt = `Generate a sequence of ${prompt.campaignType} campaign emails for ${prompt.targetAudience} with the goal: "${prompt.campaignGoal}".
-
+Campaign Type: ${prompt.campaignType}
+Target Audience: ${prompt.targetAudience}
+Campaign Goal: ${prompt.campaignGoal}
 Company: ${prompt.companyName}
 Recruiter: ${prompt.recruiterName}
 Tone: ${prompt.tone}
-Email Length: ${lengthSpec.range} words of readable text
+Email Length: ${lengthSpec.range}
 
-Additional Instructions:
-${prompt.aiInstructions}
+${collateralSection}
 
 Content Sources:
 ${prompt.contentSources.join('\n')}
 
+Additional Instructions:
+${prompt.aiInstructions}
+
 CRITICAL: Each email must be HTML-formatted with proper markup, including:
-- Responsive layout
+- Responsive table-based layout
 - Inline CSS styling
-- Proper text formatting
-- Organized bullet points or lists
-- Clickable hyperlinks
+- Proper text formatting (bold, italics, etc.)
+- Organized bullet points or numbered lists
+- Clickable hyperlinks with proper HTML anchor tags
 - Clear heading hierarchy
-- Proper paragraph spacing
+- Proper paragraph spacing and formatting
 
 Generate a sequence of HTML emails that follow email design best practices.`;
 
@@ -235,11 +177,8 @@ Generate a sequence of HTML emails that follow email design best practices.`;
       }
     );
 
-    // Clean JSON response
-    const cleanedResponse = response.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
-    
     // Parse the JSON response
-    const emailData = JSON.parse(cleanedResponse);
+    const emailData = JSON.parse(response);
     
     // Convert to EmailStep format with proper validation
     const emailSteps: EmailStep[] = emailData.map((email: any, index: number) => {
@@ -320,10 +259,10 @@ Generate a sequence of HTML emails that follow email design best practices.`;
         }
       }
       
-      // Create HTML email template - SIMPLIFIED VERSION
+      // Create HTML email template
       return `<table width="100%" cellpadding="0" cellspacing="0" style="max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif; line-height: 1.6;">
   <tr>
-    <td style="padding: 20px; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px;">
+    <td style="padding: 20px;">
       <h2 style="color: #333; font-size: 20px; margin: 0 0 15px 0;">Hi {{First Name}},</h2>
       
       <p style="color: #555; font-size: 16px; margin: 0 0 15px 0;">
@@ -348,7 +287,7 @@ Generate a sequence of HTML emails that follow email design best practices.`;
       
       ${index === 2 && companyBenefits ? `
       <div style="margin: 15px 0;">
-        <p style="color: #555; font-size: 16px; margin: 0 0 10px 0;"><strong style="color: #333;">Our benefits include:</strong></p>
+        <p style="color: #555; font-size: 16px; margin: 0 0 10px 0;">Our benefits include:</p>
         <ul style="color: #555; font-size: 16px; margin: 0; padding-left: 20px;">
           <li style="margin-bottom: 8px;">${companyBenefits}</li>
         </ul>
@@ -381,8 +320,7 @@ Generate a sequence of HTML emails that follow email design best practices.`;
       
       <p style="color: #555; font-size: 16px; margin: 15px 0 0 0;">
         Best regards,<br>
-        <strong style="color: #333;">{{Your Name}}</strong><br>
-        {{Company Name}}
+        <strong style="color: #333;">{{Your Name}}</strong>
       </p>
     </td>
   </tr>
