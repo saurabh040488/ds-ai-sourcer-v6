@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Filter, ChevronLeft, ChevronRight, Bookmark, MessageSquare, MoreHorizontal, CheckSquare, Square, Star, MapPin, Briefcase, Clock, Edit, TrendingUp, Zap, ChevronDown, ChevronUp, Plus, Users, Mail, X, Phone, Calendar, Award, Building } from 'lucide-react';
+import { ArrowLeft, Filter, ChevronLeft, ChevronRight, Bookmark, MessageSquare, MoreHorizontal, CheckSquare, Square, Star, MapPin, Briefcase, Clock, Edit, TrendingUp, Zap, ChevronDown, ChevronUp, Plus, Users, Mail, X, Phone, Calendar, Award, Building, Loader2 } from 'lucide-react';
 import { CandidateMatch, Candidate } from '../types';
 import ShortlistModal from './ShortlistModal';
 import CampaignSelectionModal from './CampaignSelectionModal';
@@ -376,7 +376,7 @@ const CandidateTable: React.FC<CandidateTableProps> = ({
                 <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">
                   Location & Experience
                 </th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">
+                <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide" style={{ minWidth: '400px' }}>
                   AI Match Analysis
                 </th>
                 <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">
@@ -445,13 +445,28 @@ const CandidateTable: React.FC<CandidateTableProps> = ({
                       
                       <td className="px-4 py-4" onClick={() => handleCandidateClick(candidate)}>
                         <div className="space-y-2">
-                          {getMatchBadge(explanation.category, explanation.score)}
+                          {/* Match badge: only show after streaming is done */}
+                          {match.streamingExplanation ? (
+                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-700">
+                              <Loader2 className="w-3 h-3 animate-spin mr-1" />
+                              Analyzing...
+                            </span>
+                          ) : (
+                            getMatchBadge(explanation.category, explanation.score)
+                          )}
                           <div className="text-xs text-gray-600">
                             <div className="flex items-start gap-1">
                               <Star className="w-3 h-3 text-yellow-500 mt-0.5 flex-shrink-0" />
-                              <span className="line-clamp-2">{explanation.reasons[0]}</span>
+                              {match.streamingExplanation ? (
+                                <span className="line-clamp-2 flex items-center gap-2">
+                                  <Loader2 className="w-3 h-3 animate-spin text-purple-400" />
+                                  {match.streamingExplanation}
+                                </span>
+                              ) : (
+                                <span className="line-clamp-2">{explanation.reasons[0]}</span>
+                              )}
                             </div>
-                            {explanation.reasons.length > 1 && (
+                            {explanation.reasons.length > 1 && !match.streamingExplanation && (
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
@@ -579,179 +594,185 @@ const CandidateTable: React.FC<CandidateTableProps> = ({
       </div>
 
       {/* Candidate Detail Panel */}
+      {/* Floating Candidate Detail Drawer */}
       {selectedCandidateForDetail && (
-        <div className="w-96 border-l border-gray-200 bg-white flex flex-col">
-          {/* Detail Header */}
-          <div className="p-6 border-b border-gray-200">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-gray-900">Candidate Details</h3>
-              <button
-                onClick={() => setSelectedCandidateForDetail(null)}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                <X className="w-5 h-5 text-gray-400" />
-              </button>
-            </div>
-            
-            <div className="flex items-start gap-4">
-              <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center flex-shrink-0">
-                <span className="text-white text-xl font-medium">
-                  {selectedCandidateForDetail.name.split(' ').map(n => n[0]).join('')}
-                </span>
+        <>
+          {/* Overlay */}
+          <div
+            className="fixed inset-0 bg-black bg-opacity-30 z-40 transition-opacity duration-200"
+            onClick={() => setSelectedCandidateForDetail(null)}
+            aria-label="Close candidate detail panel"
+          />
+          {/* Drawer */}
+          <div
+            className="fixed top-0 right-0 h-full w-full max-w-md bg-white border-l border-gray-200 z-50 shadow-xl flex flex-col transform translate-x-0 transition-transform duration-300 animate-slide-in"
+            style={{ maxWidth: 400 }}
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Detail Header */}
+            <div className="p-6 border-b border-gray-200">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-900">Candidate Details</h3>
+                <button
+                  onClick={() => setSelectedCandidateForDetail(null)}
+                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                  aria-label="Close"
+                >
+                  <X className="w-5 h-5 text-gray-400" />
+                </button>
               </div>
-              <div className="flex-1">
-                <h4 className="text-xl font-semibold text-gray-900 mb-1">
-                  {selectedCandidateForDetail.name}
-                </h4>
-                <p className="text-purple-600 font-medium mb-2">
-                  {selectedCandidateForDetail.jobTitle}
-                </p>
-                <div className="flex items-center gap-4 text-sm text-gray-600">
-                  <div className="flex items-center gap-1">
-                    <MapPin className="w-4 h-4" />
-                    {selectedCandidateForDetail.location}
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Clock className="w-4 h-4" />
-                    {selectedCandidateForDetail.experience} years
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Detail Content */}
-          <div className="flex-1 overflow-y-auto p-6 space-y-6">
-            {/* Contact Information */}
-            <div>
-              <h5 className="font-semibold text-gray-900 mb-3">Contact Information</h5>
-              <div className="space-y-2">
-                {selectedCandidateForDetail.email && (
-                  <div className="flex items-center gap-2 text-sm">
-                    <Mail className="w-4 h-4 text-gray-400" />
-                    <span className="text-gray-700">{selectedCandidateForDetail.email}</span>
-                  </div>
-                )}
-                {selectedCandidateForDetail.phone && (
-                  <div className="flex items-center gap-2 text-sm">
-                    <Phone className="w-4 h-4 text-gray-400" />
-                    <span className="text-gray-700">{selectedCandidateForDetail.phone}</span>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Summary */}
-            {selectedCandidateForDetail.summary && (
-              <div>
-                <h5 className="font-semibold text-gray-900 mb-3">Summary</h5>
-                <p className="text-sm text-gray-700 leading-relaxed">
-                  {selectedCandidateForDetail.summary}
-                </p>
-              </div>
-            )}
-
-            {/* Skills */}
-            {selectedCandidateForDetail.skills && selectedCandidateForDetail.skills.length > 0 && (
-              <div>
-                <h5 className="font-semibold text-gray-900 mb-3">Skills & Expertise</h5>
-                <div className="flex flex-wrap gap-2">
-                  {selectedCandidateForDetail.skills.map((skill, index) => (
-                    <span
-                      key={index}
-                      className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium"
-                    >
-                      {skill}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Education */}
-            {selectedCandidateForDetail.education && (
-              <div>
-                <h5 className="font-semibold text-gray-900 mb-3">Education</h5>
-                <div className="flex items-center gap-2 text-sm">
-                  <Award className="w-4 h-4 text-gray-400" />
-                  <span className="text-gray-700">{selectedCandidateForDetail.education}</span>
-                </div>
-              </div>
-            )}
-
-            {/* Industry & Availability */}
-            <div>
-              <h5 className="font-semibold text-gray-900 mb-3">Professional Details</h5>
-              <div className="space-y-2">
-                <div className="flex items-center gap-2 text-sm">
-                  <Building className="w-4 h-4 text-gray-400" />
-                  <span className="text-gray-700">{selectedCandidateForDetail.industry}</span>
-                </div>
-                <div className="flex items-center gap-2 text-sm">
-                  <Calendar className="w-4 h-4 text-gray-400" />
-                  <span className="text-gray-700">
-                    Last active: {new Date(selectedCandidateForDetail.lastActive).toLocaleDateString()}
+              <div className="flex items-start gap-4">
+                <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center flex-shrink-0">
+                  <span className="text-white text-xl font-medium">
+                    {selectedCandidateForDetail.name.split(' ').map(n => n[0]).join('')}
                   </span>
                 </div>
-                <div className="flex items-center gap-2 text-sm">
-                  <span className="text-gray-700">Status:</span>
-                  {getAvailabilityBadge(selectedCandidateForDetail.availability)}
+                <div className="flex-1">
+                  <h4 className="text-xl font-semibold text-gray-900 mb-1">
+                    {selectedCandidateForDetail.name}
+                  </h4>
+                  <p className="text-purple-600 font-medium mb-2">
+                    {selectedCandidateForDetail.jobTitle}
+                  </p>
+                  <div className="flex items-center gap-4 text-sm text-gray-600">
+                    <div className="flex items-center gap-1">
+                      <MapPin className="w-4 h-4" />
+                      {selectedCandidateForDetail.location}
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Clock className="w-4 h-4" />
+                      {selectedCandidateForDetail.experience} years
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
-
-            {/* Match Analysis */}
-            <div>
-              <h5 className="font-semibold text-gray-900 mb-3">AI Match Analysis</h5>
-              <div className="space-y-3">
-                {(() => {
-                  const match = matches.find(m => m.candidate.id === selectedCandidateForDetail.id);
-                  if (!match) return null;
-                  
-                  return (
-                    <>
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-gray-600">Match Score</span>
-                        {getMatchBadge(match.explanation.category, match.explanation.score)}
-                      </div>
-                      <div>
-                        <span className="text-sm font-medium text-gray-700 mb-2 block">Reasons:</span>
-                        <div className="space-y-1">
-                          {match.explanation.reasons.map((reason, index) => (
-                            <div key={index} className="flex items-start gap-2 text-sm text-gray-700">
-                              <Star className="w-3 h-3 text-yellow-500 mt-0.5 flex-shrink-0" />
-                              <span>{reason}</span>
-                            </div>
-                          ))}
+            {/* Detail Content */}
+            <div className="flex-1 overflow-y-auto p-6 space-y-6">
+              {/* Contact Information */}
+              <div>
+                <h5 className="font-semibold text-gray-900 mb-3">Contact Information</h5>
+                <div className="space-y-2">
+                  {selectedCandidateForDetail.email && (
+                    <div className="flex items-center gap-2 text-sm">
+                      <Mail className="w-4 h-4 text-gray-400" />
+                      <span className="text-gray-700">{selectedCandidateForDetail.email}</span>
+                    </div>
+                  )}
+                  {selectedCandidateForDetail.phone && (
+                    <div className="flex items-center gap-2 text-sm">
+                      <Phone className="w-4 h-4 text-gray-400" />
+                      <span className="text-gray-700">{selectedCandidateForDetail.phone}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+              {/* Summary */}
+              {selectedCandidateForDetail.summary && (
+                <div>
+                  <h5 className="font-semibold text-gray-900 mb-3">Summary</h5>
+                  <p className="text-sm text-gray-700 leading-relaxed">
+                    {selectedCandidateForDetail.summary}
+                  </p>
+                </div>
+              )}
+              {/* Skills */}
+              {selectedCandidateForDetail.skills && selectedCandidateForDetail.skills.length > 0 && (
+                <div>
+                  <h5 className="font-semibold text-gray-900 mb-3">Skills & Expertise</h5>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedCandidateForDetail.skills.map((skill, index) => (
+                      <span
+                        key={index}
+                        className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium"
+                      >
+                        {skill}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {/* Education */}
+              {selectedCandidateForDetail.education && (
+                <div>
+                  <h5 className="font-semibold text-gray-900 mb-3">Education</h5>
+                  <div className="flex items-center gap-2 text-sm">
+                    <Award className="w-4 h-4 text-gray-400" />
+                    <span className="text-gray-700">{selectedCandidateForDetail.education}</span>
+                  </div>
+                </div>
+              )}
+              {/* Industry & Availability */}
+              <div>
+                <h5 className="font-semibold text-gray-900 mb-3">Professional Details</h5>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 text-sm">
+                    <Building className="w-4 h-4 text-gray-400" />
+                    <span className="text-gray-700">{selectedCandidateForDetail.industry}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm">
+                    <Calendar className="w-4 h-4 text-gray-400" />
+                    <span className="text-gray-700">
+                      Last active: {new Date(selectedCandidateForDetail.lastActive).toLocaleDateString()}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm">
+                    <span className="text-gray-700">Status:</span>
+                    {getAvailabilityBadge(selectedCandidateForDetail.availability)}
+                  </div>
+                </div>
+              </div>
+              {/* Match Analysis */}
+              <div>
+                <h5 className="font-semibold text-gray-900 mb-3">AI Match Analysis</h5>
+                <div className="space-y-3">
+                  {(() => {
+                    const match = matches.find(m => m.candidate.id === selectedCandidateForDetail.id);
+                    if (!match) return null;
+                    return (
+                      <>
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm text-gray-600">Match Score</span>
+                          {getMatchBadge(match.explanation.category, match.explanation.score)}
                         </div>
-                      </div>
-                    </>
-                  );
-                })()}
+                        <div>
+                          <span className="text-sm font-medium text-gray-700 mb-2 block">Reasons:</span>
+                          <div className="space-y-1">
+                            {match.explanation.reasons.map((reason, index) => (
+                              <div key={index} className="flex items-start gap-2 text-sm text-gray-700">
+                                <Star className="w-3 h-3 text-yellow-500 mt-0.5 flex-shrink-0" />
+                                <span>{reason}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </>
+                    );
+                  })()}
+                </div>
+              </div>
+            </div>
+            {/* Detail Actions */}
+            <div className="p-6 border-t border-gray-200">
+              <div className="space-y-3">
+                <button
+                  onClick={() => handleAddToShortlist(selectedCandidateForDetail.id)}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  <Bookmark className="w-4 h-4" />
+                  Add to Shortlist
+                </button>
+                <button
+                  onClick={() => handleAddToCampaign(selectedCandidateForDetail.id)}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+                >
+                  <MessageSquare className="w-4 h-4" />
+                  Add to Campaign
+                </button>
               </div>
             </div>
           </div>
-
-          {/* Detail Actions */}
-          <div className="p-6 border-t border-gray-200">
-            <div className="space-y-3">
-              <button
-                onClick={() => handleAddToShortlist(selectedCandidateForDetail.id)}
-                className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                <Bookmark className="w-4 h-4" />
-                Add to Shortlist
-              </button>
-              <button
-                onClick={() => handleAddToCampaign(selectedCandidateForDetail.id)}
-                className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
-              >
-                <MessageSquare className="w-4 h-4" />
-                Add to Campaign
-              </button>
-            </div>
-          </div>
-        </div>
+        </>
       )}
 
       {/* Shortlist Modal */}
